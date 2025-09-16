@@ -2,7 +2,8 @@
   "permissions": {
     "allow": [
       "Bash(move \"src\\.env\" \".env\")",
-      "Bash(mv:*)"
+      "Bash(mv:*)",
+      "Bash(curl:*)"
     ],
     "deny": [],
     "ask": []

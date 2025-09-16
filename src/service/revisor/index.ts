@@ -76,18 +76,28 @@ export const getIncidencesByProcess = async (
     console.log("📋 Datos raw del backend para proceso", processId, ":", data);
 
     // Transformar los datos del backend al formato esperado por el frontend
-    const transformedData: Incidence[] = data.map((incident: any) => ({
-      id: incident._id,
-      processId: processId, // Usar el processId pasado como parámetro
-      description: incident.description,
-      status: incident.status?.toUpperCase() === "PENDIENTE" || incident.status?.toUpperCase() === "PENDING"
-        ? "PENDING"
-        : "RESOLVED",
-      evidence: incident.evidence,
-      createdAt: incident.createdAt,
-      resolvedAt: incident.resolvedAt,
-      createdBy: incident.createdBy, // Puede ser string u objeto
-    }));
+    const transformedData: Incidence[] = data
+      .filter((incident: any) => {
+        // Filtrar incidencias que no tengan ID válido (puede ser _id o id)
+        const incidentId = incident._id || incident.id;
+        if (!incidentId) {
+          console.warn("⚠️ Incidencia sin ID encontrada y omitida:", incident);
+          return false;
+        }
+        return true;
+      })
+      .map((incident: any) => ({
+        id: incident._id || incident.id, // El backend puede usar _id o id
+        processId: processId, // Usar el processId pasado como parámetro
+        description: incident.description,
+        status: incident.status?.toUpperCase() === "PENDIENTE" || incident.status?.toUpperCase() === "PENDING"
+          ? "PENDING"
+          : "RESOLVED",
+        evidence: incident.evidence,
+        createdAt: incident.createdAt,
+        resolvedAt: incident.resolvedAt,
+        createdBy: incident.createdBy, // Puede ser string u objeto
+      }));
 
     return transformedData;
   } catch (err: any) {
@@ -103,24 +113,29 @@ export const getIncidencesByProcess = async (
 export const getAllIncidencesForReviewer = async (): Promise<Incidence[]> => {
   try {
     // Primero obtener todos los procesos asignados al revisor
+    console.log("🔍 Obteniendo procesos del revisor...");
     const processes = await getProcessesForReviewer();
+    console.log("📋 Procesos encontrados:", processes.length, processes);
 
     // Luego obtener las incidencias de cada proceso
     const allIncidences: Incidence[] = [];
 
     for (const process of processes) {
       try {
+        console.log(`🔍 Obteniendo incidencias para proceso ${process.id}...`);
         const processIncidences = await getIncidencesByProcess(process.id);
+        console.log(`✅ Incidencias encontradas para proceso ${process.id}:`, processIncidences.length);
         allIncidences.push(...processIncidences);
       } catch (error) {
         console.warn(
-          `Error al obtener incidencias del proceso ${process.id}:`,
+          `❌ Error al obtener incidencias del proceso ${process.id}:`,
           error
         );
         // Continuar con el siguiente proceso aunque uno falle
       }
     }
 
+    console.log("🎯 Total de incidencias cargadas:", allIncidences.length);
     return allIncidences;
   } catch (err: any) {
     const message =
@@ -137,16 +152,30 @@ export const resolveIncident = async (
   resolveData?: ResolveIncidentRequest
 ): Promise<{ success: boolean; message: string }> => {
   try {
+    console.log("🔄 Resolviendo incidencia:", incidentId, "con datos:", resolveData);
+
+    const requestData = {
+      resolvedAt: resolveData?.resolvedAt || new Date().toISOString(),
+    };
+
+    console.log("📤 Enviando petición PATCH a:", `/incidents/${incidentId}/resolve`);
+    console.log("📤 Datos enviados:", requestData);
+
     const { data } = await gstApi.patch(
       `/incidents/${incidentId}/resolve`,
-      {
-        resolvedAt: resolveData?.resolvedAt || new Date().toISOString(),
-      }
+      requestData
     );
 
-    return data;
+    console.log("✅ Respuesta del servidor:", data);
+    return { success: true, message: "Incidencia resuelta correctamente" };
   } catch (err: any) {
+    console.error("❌ Error completo al resolver incidencia:", err);
+    console.error("❌ Response data:", err?.response?.data);
+    console.error("❌ Response status:", err?.response?.status);
+    console.error("❌ Request config:", err?.config);
+
     const message =
+      err?.response?.data?.error ||
       err?.response?.data?.message ||
       err?.message ||
       "Error al resolver la incidencia";

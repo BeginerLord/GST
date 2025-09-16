@@ -100,11 +100,18 @@ export default function IncidenceTable() {
   }
 
   const handleResolveIncidence = async (incidenceId: string) => {
+    if (!incidenceId) {
+      console.error("❌ Error: ID de incidencia no válido:", incidenceId);
+      alert("Error: No se puede resolver la incidencia. ID no válido.");
+      return;
+    }
+
     if (window.confirm("¿Estás seguro de que deseas marcar esta incidencia como resuelta?")) {
       try {
         await resolveIncidentById(incidenceId)
       } catch (error: any) {
         console.error("Error al resolver incidencia:", error)
+        alert(`Error al resolver la incidencia: ${error.message}`)
       }
     }
   }
@@ -334,7 +341,7 @@ export default function IncidenceTable() {
                         >
                           <Eye size={18} className="text-gray-500" />
                         </button>
-                        {incidence.status === "PENDING" && (
+                        {incidence.status === "PENDING" && incidence.id && (
                           <button
                             className="p-1 rounded-full hover:bg-gray-100"
                             title="Marcar como resuelta"
