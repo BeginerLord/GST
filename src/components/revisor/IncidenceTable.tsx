@@ -3,6 +3,7 @@ import { Eye, CheckCircle, Search, ChevronDown, ChevronUp, Plus, Download } from
 import CreateIncidenceModal from "./CreateIncidenceModal"
 import ViewIncidenceModal from "./ViewIncidenceModal"
 import GenerateReportModal from "./GenerateReportModal"
+import ConfirmDialog from "@/components/ui/confirm-dialog"
 import type { Incidence } from "@/models/incidents"
 import { useIncidents } from "@/hooks/useIncidents"
 import { useProcesses } from "@/hooks/useProcesses"
@@ -30,7 +31,9 @@ export default function IncidenceTable() {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
   const [isViewModalOpen, setIsViewModalOpen] = useState(false)
   const [isReportModalOpen, setIsReportModalOpen] = useState(false)
+  const [isConfirmDialogOpen, setIsConfirmDialogOpen] = useState(false)
   const [selectedIncidence, setSelectedIncidence] = useState<Incidence | null>(null)
+  const [incidenceToResolve, setIncidenceToResolve] = useState<string | null>(null)
 
   // Cargar datos al montar el componente
   useEffect(() => {
@@ -106,13 +109,19 @@ export default function IncidenceTable() {
       return;
     }
 
-    if (window.confirm("¿Estás seguro de que deseas marcar esta incidencia como resuelta?")) {
-      try {
-        await resolveIncidentById(incidenceId)
-      } catch (error: any) {
-        console.error("Error al resolver incidencia:", error)
-        alert(`Error al resolver la incidencia: ${error.message}`)
-      }
+    // Abrir el modal de confirmación
+    setIncidenceToResolve(incidenceId)
+    setIsConfirmDialogOpen(true)
+  }
+
+  const confirmResolveIncidence = async () => {
+    if (!incidenceToResolve) return
+
+    try {
+      await resolveIncidentById(incidenceToResolve)
+    } catch (error: any) {
+      console.error("Error al resolver incidencia:", error)
+      alert(`Error al resolver la incidencia: ${error.message}`)
     }
   }
 
@@ -398,6 +407,21 @@ export default function IncidenceTable() {
         isOpen={isReportModalOpen}
         onClose={() => setIsReportModalOpen(false)}
         processes={processes}
+      />
+
+      {/* Modal de confirmación para resolver incidencia */}
+      <ConfirmDialog
+        isOpen={isConfirmDialogOpen}
+        onClose={() => {
+          setIsConfirmDialogOpen(false)
+          setIncidenceToResolve(null)
+        }}
+        onConfirm={confirmResolveIncidence}
+        title="Confirmar resolución"
+        message="¿Estás seguro de que deseas marcar esta incidencia como resuelta? Esta acción no se puede deshacer."
+        confirmText="Marcar como resuelta"
+        cancelText="Cancelar"
+        variant="success"
       />
     </>
   )
