@@ -92,7 +92,7 @@ export default function IncidenceTable() {
     }
   }
 
-  const handleCreateIncidence = async (newIncidence: any) => {
+  const handleCreateIncidence = async () => {
     try {
       // El modal ya se encarga de crear la incidencia en el backend
       // Los hooks se encargan de recargar automáticamente

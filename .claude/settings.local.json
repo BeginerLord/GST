@@ -3,7 +3,8 @@
     "allow": [
       "Bash(move \"src\\.env\" \".env\")",
       "Bash(mv:*)",
-      "Bash(curl:*)"
+      "Bash(curl:*)",
+      "Bash(pnpm build:*)"
     ],
     "deny": [],
     "ask": []
