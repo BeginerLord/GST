@@ -3,14 +3,6 @@ import type {
   RegisterUserRequest,
   RegisterUserResponse,
 } from "@/models/admin";
-import type {
-  CreateIncidentRequest,
-  ResolveIncidentRequest,
-  ProcessResponse,
-  Incidence,
-  GenerateReportRequest,
-  ReportResponse,
-} from "@/models/incidents";
 
 // ========================================
 // GESTIÓN DE USUARIOS (EXCLUSIVO ADMIN)
