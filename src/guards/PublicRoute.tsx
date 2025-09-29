@@ -8,15 +8,17 @@ interface PublicRouteProps {
 const PublicRoute = ({ children }: PublicRouteProps) => {
   const token = sessionStorage.getItem('token');
   const userRole = sessionStorage.getItem('userRole');
-  
+
   if (token && userRole) {
     if (userRole === 'administrador') {
       return <Navigate to="/admin" replace />;
+    } else if (userRole === 'supervisor') {
+      return <Navigate to="/supervisor" replace />;
     } else if (userRole === 'revisor') {
       return <Navigate to="/revisor" replace />;
     }
   }
-  
+
   return <>{children}</>;
 };
 
