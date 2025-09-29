@@ -3,6 +3,7 @@ import { useState } from "react"
 import { Eye, EyeOff, Mail, Lock, ArrowRight } from "lucide-react"
 import { useLoginHook } from "@/hooks/login"
 import { useNavigate } from "react-router-dom"
+import { toast } from "sonner"
 
 const Login: React.FC = () => {
   const [formData, setFormData] = useState({
@@ -15,32 +16,25 @@ const Login: React.FC = () => {
   
   const { loginFn, isPending } = useLoginHook({
     onSuccess: (response) => {
-      // La respuesta tiene una estructura: { success, message, data: { user, token } }
-      const data = response?.data || response;
+      // El servicio de login ya guarda el token y los datos del usuario
+      // Solo necesitamos navegar según el rol
+      const userRole = response?.user?.role;
 
-      // Guardar token y rol del usuario en sessionStorage
-      if (data?.token) {
-        sessionStorage.setItem("token", data.token);
-      }
-      if (data?.user?.role) {
-        sessionStorage.setItem("userRole", data.user.role);
-      }
+      console.log("✅ Login exitoso. Rol del usuario:", userRole);
 
-      // Navegar según el rol del usuario
-      const userRole = data?.user?.role;
-      console.log("User role:", userRole); // Debug log
       if (userRole === 'administrador') {
+        console.log("🔐 Navegando a /admin");
         navigate("/admin");
       } else if (userRole === 'revisor') {
+        console.log("🔐 Navegando a /revisor");
         navigate("/revisor");
       } else {
-        // Fallback por si no hay rol definido
-        console.log("No valid role found, staying on login");
-        navigate("/login");
+        console.warn("⚠️ Rol no válido:", userRole);
+        toast.error("Rol de usuario no válido");
       }
     },
     onError: (error) => {
-      console.error("Error en login:", error);
+      console.error("❌ Error en login:", error);
     }
   });
 

@@ -1,9 +1,18 @@
 import { gstApi } from "@/api";
 
+interface User {
+  _id: string;
+  name: string;
+  email: string;
+  role: "administrador" | "revisor";
+  createdAt: string;
+  updatedAt: string;
+  __v?: number;
+}
+
 interface LoginResponse {
+  user: User;
   token: string;
-  user?: Record<string, any>;
-  [k: string]: any;
 }
 
 export const login = async (
@@ -18,9 +27,17 @@ export const login = async (
       email,
       password,
     });
+
+    // Guardar token y datos del usuario en sessionStorage
     if (data?.token) {
-      sessionStorage.setItem("jwt", data.token);
+      sessionStorage.setItem("token", data.token);
     }
+
+    if (data?.user) {
+      sessionStorage.setItem("user", JSON.stringify(data.user));
+      sessionStorage.setItem("userRole", data.user.role);
+    }
+
     return data;
   } catch (err: any) {
     const message =

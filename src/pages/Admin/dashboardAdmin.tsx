@@ -1,286 +1,213 @@
-import type React from "react"
-import { useNavigate } from "react-router-dom"
+import { useState, useEffect } from "react"
+import { UserPlus, LogOut, Users, ShieldCheck } from "lucide-react"
+import RegisterUserModal from "@/components/admin/RegisterUserModal"
 
-interface AdminAction {
-    key: string
-    title: string
-    description: string
-    to: string
-    icon: React.ReactNode
+type ActiveSection = "overview" | "users"
+
+interface User {
+  _id: string;
+  name: string;
+  email: string;
+  role: "administrador" | "revisor";
 }
 
-const UserIcon = () => (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
-        <circle cx="12" cy="7" r="4" />
-    </svg>
-)
-
-const UsersIcon = () => (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
-        <circle cx="9" cy="7" r="4" />
-        <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
-        <path d="M16 3.13a4 4 0 0 1 0 7.75" />
-    </svg>
-)
-
-const EditIcon = () => (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
-        <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
-    </svg>
-)
-
-const TrashIcon = () => (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-        <polyline points="3,6 5,6 21,6" />
-        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
-        <line x1="10" y1="11" x2="10" y2="17" />
-        <line x1="14" y1="11" x2="14" y2="17" />
-    </svg>
-)
-
-const ReportIcon = () => (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-        <polyline points="14,2 14,8 20,8" />
-        <line x1="16" y1="13" x2="8" y2="13" />
-        <line x1="16" y1="17" x2="8" y2="17" />
-        <polyline points="10,9 9,9 8,9" />
-    </svg>
-)
-
-const ArrowRightIcon = () => (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-        <path d="M5 12h14" />
-        <path d="M12 5l7 7-7 7" />
-    </svg>
-)
-
 export default function ScreenAdmin() {
-    const navigate = useNavigate()
+    const [activeSection, setActiveSection] = useState<ActiveSection>("overview")
+    const [isRegisterModalOpen, setIsRegisterModalOpen] = useState(false)
+    const [currentUser, setCurrentUser] = useState<User | null>(null)
 
-    const actions: AdminAction[] = [
-        {
-            key: "create-user",
-            title: "Crear usuario",
-            description: "Da de alta nuevos colaboradores y define su rol.",
-            to: "/admin/users/new",
-            icon: <UserIcon />,
-        },
-        {
-            key: "view-users",
-            title: "Ver usuarios",
-            description: "Consulta y filtra el directorio de usuarios.",
-            to: "/admin/users",
-            icon: <UsersIcon />,
-        },
-        {
-            key: "modify-user",
-            title: "Modificar usuario",
-            description: "Actualiza rol, datos o estado de acceso.",
-            to: "/admin/users/edit",
-            icon: <EditIcon />,
-        },
-        {
-            key: "delete-user",
-            title: "Eliminar usuario",
-            description: "Revoca acceso y elimina cuentas de forma segura.",
-            to: "/admin/users/delete",
-            icon: <TrashIcon />,
-        },
-        {
-            key: "view-reports",
-            title: "Ver reportes",
-            description: "Accede a reportes y descargas en PDF.",
-            to: "/admin/reports",
-            icon: <ReportIcon />,
-        },
-    ]
-
-    const handleRowClick = (to: string) => {
-        navigate(to)
-    }
-
-    const handleKeyDown = (event: React.KeyboardEvent, to: string) => {
-        if (event.key === "Enter" || event.key === " ") {
-            event.preventDefault()
-            navigate(to)
+    // Cargar datos del usuario al montar el componente
+    useEffect(() => {
+        const userStr = sessionStorage.getItem("user")
+        if (userStr) {
+            try {
+                const user = JSON.parse(userStr)
+                setCurrentUser(user)
+                console.log("👤 Usuario actual:", user)
+            } catch (error) {
+                console.error("Error al parsear datos del usuario:", error)
+            }
         }
+    }, [])
+
+    const handleLogout = () => {
+        sessionStorage.removeItem("token")
+        sessionStorage.removeItem("user")
+        sessionStorage.removeItem("userRole")
+        window.location.href = "/login"
     }
 
     return (
-        <div style={styles.container}>
-            <header style={styles.header}>
-                <h1 style={styles.title}>Panel de Administración</h1>
-                <p style={styles.subtitle}>Gestiona usuarios, permisos y reportes desde un único lugar.</p>
+        <div className="min-h-screen bg-gray-50">
+            {/* Header */}
+            <header className="bg-white shadow-sm border-b border-gray-200">
+                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+                    <div className="flex items-center justify-between">
+                        <div>
+                            <h1 className="text-2xl font-bold text-gray-900">Panel de Administración</h1>
+                            <p className="text-sm text-gray-600 mt-1">
+                                {currentUser ? `Bienvenido, ${currentUser.name}` : "Gestiona usuarios, incidencias y reportes del sistema"}
+                            </p>
+                        </div>
+                        <div className="flex items-center gap-3">
+                            <button
+                                onClick={() => setIsRegisterModalOpen(true)}
+                                className="flex items-center gap-2 px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors"
+                            >
+                                <UserPlus size={18} />
+                                <span>Registrar Usuario</span>
+                            </button>
+                            <button
+                                onClick={handleLogout}
+                                className="flex items-center gap-2 px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors"
+                            >
+                                <LogOut size={18} />
+                                <span>Cerrar Sesión</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
             </header>
 
-            <div style={styles.tableContainer}>
-                <table style={styles.table}>
-                    <thead>
-                        <tr style={styles.headerRow}>
-                            <th style={styles.headerCell}>Función</th>
-                            <th style={styles.headerCell}>Descripción</th>
-                            <th style={styles.headerCell}>Acción</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {actions.map((action, index) => (
-                            <tr
-                                key={action.key}
-                                style={{
-                                    ...styles.row,
-                                    borderBottom: index === actions.length - 1 ? "none" : "1px solid #f3f4f6",
-                                }}
-                                onClick={() => handleRowClick(action.to)}
-                                onKeyDown={(e) => handleKeyDown(e, action.to)}
-                                tabIndex={0}
-                                role="button"
-                                aria-label={`${action.title}: ${action.description}`}
-                            >
-                                <td style={styles.cell}>
-                                    <div style={styles.functionCell}>
-                                        <div style={styles.iconContainer}>{action.icon}</div>
-                                        <span style={styles.functionTitle}>{action.title}</span>
-                                    </div>
-                                </td>
-                                <td style={styles.cell}>
-                                    <span style={styles.description}>{action.description}</span>
-                                </td>
-                                <td style={styles.cell}>
-                                    <button
-                                        style={styles.actionButton}
-                                        onClick={(e) => {
-                                            e.stopPropagation()
-                                            handleRowClick(action.to)
-                                        }}
-                                        aria-label={`Ir a ${action.title.toLowerCase()}`}
-                                    >
-                                        <span>Acceder</span>
-                                        <ArrowRightIcon />
-                                    </button>
-                                </td>
-                            </tr>
-                        ))}
-                    </tbody>
-                </table>
+            {/* Navigation Tabs */}
+            <div className="bg-white border-b border-gray-200">
+                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                    <nav className="flex gap-8">
+                        <button
+                            onClick={() => setActiveSection("overview")}
+                            className={`flex items-center gap-2 px-1 py-4 border-b-2 font-medium text-sm transition-colors ${
+                                activeSection === "overview"
+                                    ? "border-emerald-600 text-emerald-600"
+                                    : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                            }`}
+                        >
+                            <ShieldCheck size={18} />
+                            Vista General
+                        </button>
+                        <button
+                            onClick={() => setActiveSection("users")}
+                            className={`flex items-center gap-2 px-1 py-4 border-b-2 font-medium text-sm transition-colors ${
+                                activeSection === "users"
+                                    ? "border-emerald-600 text-emerald-600"
+                                    : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                            }`}
+                        >
+                            <Users size={18} />
+                            Gestión de Usuarios
+                        </button>
+                    </nav>
+                </div>
             </div>
+
+            {/* Main Content */}
+            <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+                {activeSection === "overview" && (
+                    <div className="space-y-6">
+                        {/* Welcome Card */}
+                        <div className="bg-gradient-to-r from-emerald-500 to-emerald-600 rounded-xl shadow-lg p-8 text-white">
+                            <div className="flex items-center justify-between">
+                                <div>
+                                    <h2 className="text-3xl font-bold mb-2">
+                                        {currentUser ? `Hola, ${currentUser.name.split(' ')[0]}!` : 'Panel de Administración'}
+                                    </h2>
+                                    <p className="text-emerald-100">
+                                        Como administrador, puedes gestionar los usuarios del sistema
+                                    </p>
+                                </div>
+                                <ShieldCheck size={64} className="text-emerald-200 opacity-80" />
+                            </div>
+                        </div>
+
+                        {/* Admin Actions Grid */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            {/* Register User Card */}
+                            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow">
+                                <div className="flex items-start justify-between mb-4">
+                                    <div className="p-3 bg-emerald-100 rounded-lg">
+                                        <UserPlus size={24} className="text-emerald-600" />
+                                    </div>
+                                </div>
+                                <h3 className="text-lg font-semibold text-gray-900 mb-2">Registrar Usuario</h3>
+                                <p className="text-gray-600 mb-4 text-sm">
+                                    Crea nuevas cuentas de usuario y asigna roles (Administrador o Revisor)
+                                </p>
+                                <button
+                                    onClick={() => setIsRegisterModalOpen(true)}
+                                    className="w-full px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors font-medium"
+                                >
+                                    Nuevo Usuario
+                                </button>
+                            </div>
+
+                            {/* Manage Users Card */}
+                            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow">
+                                <div className="flex items-start justify-between mb-4">
+                                    <div className="p-3 bg-blue-100 rounded-lg">
+                                        <Users size={24} className="text-blue-600" />
+                                    </div>
+                                </div>
+                                <h3 className="text-lg font-semibold text-gray-900 mb-2">Gestión de Usuarios</h3>
+                                <p className="text-gray-600 mb-4 text-sm">
+                                    Visualiza, edita y administra las cuentas de usuarios existentes
+                                </p>
+                                <button
+                                    onClick={() => setActiveSection("users")}
+                                    className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
+                                >
+                                    Ver Usuarios
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* Info Cards */}
+                        <div className="bg-blue-50 border border-blue-200 rounded-xl p-6">
+                            <div className="flex items-start gap-3">
+                                <div className="p-2 bg-blue-100 rounded-lg mt-1">
+                                    <svg className="w-5 h-5 text-blue-600" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                                    </svg>
+                                </div>
+                                <div>
+                                    <h4 className="font-semibold text-blue-900 mb-1">Información importante</h4>
+                                    <p className="text-sm text-blue-800">
+                                        Los administradores tienen permisos completos para la gestión de usuarios.
+                                        La gestión de incidencias y reportes está disponible exclusivamente para el rol de Revisor.
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                {activeSection === "users" && (
+                    <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8 text-center">
+                        <Users size={48} className="mx-auto text-gray-400 mb-4" />
+                        <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                            Gestión de Usuarios
+                        </h3>
+                        <p className="text-gray-600 mb-6">
+                            Esta sección estará disponible próximamente. Por ahora, puedes registrar nuevos usuarios
+                            usando el botón "Registrar Usuario" en la parte superior.
+                        </p>
+                        <button
+                            onClick={() => setIsRegisterModalOpen(true)}
+                            className="inline-flex items-center gap-2 px-6 py-3 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors"
+                        >
+                            <UserPlus size={18} />
+                            Registrar Nuevo Usuario
+                        </button>
+                    </div>
+                )}
+            </main>
+
+            {/* Register User Modal */}
+            <RegisterUserModal
+                isOpen={isRegisterModalOpen}
+                onClose={() => setIsRegisterModalOpen(false)}
+                onSuccess={() => {
+                    console.log("Usuario registrado exitosamente")
+                }}
+            />
         </div>
     )
-}
-
-const styles = {
-    container: {
-        maxWidth: "1000px",
-        margin: "0 auto",
-        padding: "32px 24px",
-        fontFamily: "system-ui, -apple-system, sans-serif",
-    } as React.CSSProperties,
-
-    header: {
-        textAlign: "center" as const,
-        marginBottom: "48px",
-    } as React.CSSProperties,
-
-    title: {
-        fontSize: "2rem",
-        fontWeight: "600",
-        color: "#111827",
-        margin: "0 0 12px 0",
-        letterSpacing: "-0.025em",
-    } as React.CSSProperties,
-
-    subtitle: {
-        fontSize: "1rem",
-        color: "#6b7280",
-        margin: "0",
-        fontWeight: "400",
-    } as React.CSSProperties,
-
-    tableContainer: {
-        backgroundColor: "#ffffff",
-        borderRadius: "12px",
-        border: "1px solid #e5e7eb",
-        overflow: "hidden",
-        boxShadow: "0 1px 3px 0 rgba(0, 0, 0, 0.1)",
-    } as React.CSSProperties,
-
-    table: {
-        width: "100%",
-        borderCollapse: "collapse" as const,
-    } as React.CSSProperties,
-
-    headerRow: {
-        backgroundColor: "#f9fafb",
-        borderBottom: "1px solid #e5e7eb",
-    } as React.CSSProperties,
-
-    headerCell: {
-        padding: "16px 24px",
-        textAlign: "left" as const,
-        fontSize: "0.875rem",
-        fontWeight: "600",
-        color: "#374151",
-        textTransform: "uppercase" as const,
-        letterSpacing: "0.05em",
-    } as React.CSSProperties,
-
-    row: {
-        cursor: "pointer",
-        transition: "background-color 0.15s ease-in-out",
-        outline: "none",
-    } as React.CSSProperties,
-
-    cell: {
-        padding: "20px 24px",
-        verticalAlign: "middle" as const,
-    } as React.CSSProperties,
-
-    functionCell: {
-        display: "flex",
-        alignItems: "center",
-        gap: "12px",
-    } as React.CSSProperties,
-
-    iconContainer: {
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        width: "40px",
-        height: "40px",
-        backgroundColor: "#f3f4f6",
-        borderRadius: "8px",
-        color: "#6b7280",
-        flexShrink: 0,
-    } as React.CSSProperties,
-
-    functionTitle: {
-        fontSize: "1rem",
-        fontWeight: "500",
-        color: "#111827",
-    } as React.CSSProperties,
-
-    description: {
-        fontSize: "0.875rem",
-        color: "#6b7280",
-        lineHeight: "1.5",
-    } as React.CSSProperties,
-
-    actionButton: {
-        display: "flex",
-        alignItems: "center",
-        gap: "8px",
-        backgroundColor: "transparent",
-        border: "1px solid #d1d5db",
-        borderRadius: "6px",
-        padding: "8px 16px",
-        fontSize: "0.875rem",
-        fontWeight: "500",
-        color: "#374151",
-        cursor: "pointer",
-        transition: "all 0.15s ease-in-out",
-        outline: "none",
-    } as React.CSSProperties,
 }
