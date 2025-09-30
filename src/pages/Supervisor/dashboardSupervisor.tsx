@@ -1,9 +1,11 @@
 import { useState, useEffect } from "react"
-import { Eye, AlertTriangle, BarChart3, LogOut, Activity } from "lucide-react"
+import { Eye, AlertTriangle, BarChart3, LogOut, Activity, FolderOpen, FileText } from "lucide-react"
 import IncidenceTable from "@/components/supervisor/IncidenceTable"
-import { useGetAllIncidencesHook, useGetAllProcessesHook } from "@/hooks/supervisor"
+import ProcessTable from "@/components/supervisor/ProcessTable"
+import ViewReportModal from "@/components/supervisor/ViewReportModal"
+import { useGetPendingIncidencesHook, useGetAllProcessesHook } from "@/hooks/supervisor"
 
-type ActiveSection = "overview" | "incidences"
+type ActiveSection = "overview" | "incidences" | "processes" | "reports"
 
 interface User {
   _id: string
@@ -15,9 +17,11 @@ interface User {
 export default function DashboardSupervisor() {
   const [activeSection, setActiveSection] = useState<ActiveSection>("overview")
   const [currentUser, setCurrentUser] = useState<User | null>(null)
+  const [reportIdToView, setReportIdToView] = useState<string | null>(null)
+  const [isReportModalOpen, setIsReportModalOpen] = useState(false)
 
   // Hooks para estadísticas
-  const { data: allIncidences = [] } = useGetAllIncidencesHook()
+  const { data: pendingIncidences = [] } = useGetPendingIncidencesHook()
   const { data: allProcesses = [] } = useGetAllProcessesHook()
 
   // Cargar datos del usuario al montar el componente
@@ -37,9 +41,9 @@ export default function DashboardSupervisor() {
   // Calcular estadísticas
   const stats = {
     totalProcesses: allProcesses.length,
-    totalIncidents: allIncidences.length,
-    pendingIncidents: allIncidences.filter((inc) => inc.status === "PENDING").length,
-    resolvedIncidents: allIncidences.filter((inc) => inc.status === "RESOLVED").length,
+    totalIncidents: pendingIncidences.length,
+    pendingIncidents: pendingIncidences.length,
+    resolvedIncidents: 0,
   }
 
   const handleLogout = () => {
@@ -97,6 +101,28 @@ export default function DashboardSupervisor() {
             >
               <AlertTriangle size={18} />
               Gestión de Incidencias
+            </button>
+            <button
+              onClick={() => setActiveSection("processes")}
+              className={`flex items-center gap-2 px-1 py-4 border-b-2 font-medium text-sm transition-colors ${
+                activeSection === "processes"
+                  ? "border-blue-600 text-blue-600"
+                  : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+              }`}
+            >
+              <FolderOpen size={18} />
+              Procesos en Revisión
+            </button>
+            <button
+              onClick={() => setActiveSection("reports")}
+              className={`flex items-center gap-2 px-1 py-4 border-b-2 font-medium text-sm transition-colors ${
+                activeSection === "reports"
+                  ? "border-blue-600 text-blue-600"
+                  : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+              }`}
+            >
+              <FileText size={18} />
+              Ver Reportes
             </button>
           </nav>
         </div>
@@ -237,7 +263,65 @@ export default function DashboardSupervisor() {
         )}
 
         {activeSection === "incidences" && <IncidenceTable />}
+
+        {activeSection === "processes" && <ProcessTable />}
+
+        {activeSection === "reports" && (
+          <div className="space-y-6">
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8">
+              <div className="text-center">
+                <FileText size={64} className="text-purple-400 mx-auto mb-4" />
+                <h3 className="text-xl font-semibold text-gray-900 mb-2">Ver Reportes Generados</h3>
+                <p className="text-gray-600 mb-6">
+                  Para ver un reporte, ingresa el ID del reporte que deseas consultar
+                </p>
+                <form
+                  onSubmit={(e) => {
+                    e.preventDefault()
+                    const formData = new FormData(e.currentTarget)
+                    const reportId = formData.get("reportId") as string
+                    if (reportId && reportId.trim()) {
+                      setReportIdToView(reportId.trim())
+                      setIsReportModalOpen(true)
+                    } else {
+                      alert("Por favor ingresa un ID de reporte válido")
+                    }
+                  }}
+                  className="max-w-md mx-auto"
+                >
+                  <div className="flex gap-3">
+                    <input
+                      type="text"
+                      name="reportId"
+                      placeholder="ID del Reporte (ej: 68c72aa4e750e83688dc9da9)"
+                      className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-200 focus:border-purple-500 outline-none"
+                      required
+                    />
+                    <button
+                      type="submit"
+                      className="px-6 py-2 bg-purple-500 text-white rounded-lg hover:bg-purple-600 transition-colors"
+                    >
+                      Ver Reporte
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          </div>
+        )}
       </main>
+
+      {/* Modal para ver reporte */}
+      {reportIdToView && (
+        <ViewReportModal
+          isOpen={isReportModalOpen}
+          onClose={() => {
+            setIsReportModalOpen(false)
+            setReportIdToView(null)
+          }}
+          reportId={reportIdToView}
+        />
+      )}
     </div>
   )
 }

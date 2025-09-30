@@ -1,27 +1,44 @@
 import { gstApi } from "@/api";
 import type {
-  CreateIncidentRequest,
-  ResolveIncidentRequest,
   ProcessResponse,
   Incidence,
-  GenerateReportRequest,
   ReportResponse,
 } from "@/models/incidents";
+import type { AssignIncidentRequest } from "@/models/supervisor";
 
 // ========================================
-// GESTIÓN DE PROCESOS (ACCESO GLOBAL)
+// GESTIÓN DE PROCESOS (SUPERVISOR)
 // ========================================
 
 /**
- * Obtener todos los procesos del sistema (acceso global para supervisores)
- * GET /api/v1/processes/reviewer
- * Los supervisores tienen acceso global a todos los procesos
+ * Obtener procesos en revisión (supervisor)
+ * GET /api/v1/processes/supervisor
  */
 export const getAllProcesses = async (): Promise<ProcessResponse[]> => {
   try {
-    const { data } = await gstApi.get<ProcessResponse[]>("/processes/reviewer");
-    return data;
+    const { data } = await gstApi.get<any[]>("/processes/supervisor");
+
+    console.log("📦 Datos crudos de procesos:", data);
+
+    // Transformar datos del backend al formato esperado
+    const transformedData: ProcessResponse[] = data.map((process: any) => ({
+      id: process._id || process.id,
+      name: process.name || process.title || "Sin nombre",
+      description: process.description || "",
+      status: process.status || "pendiente",
+      dueDate: process.dueDate ? new Date(process.dueDate) : new Date(),
+      createdAt: process.createdAt ? new Date(process.createdAt) : new Date(),
+      createdBy: {
+        name: process.createdBy?.name || process.createdBy?.username || "Usuario desconocido",
+        email: process.createdBy?.email || "",
+      },
+    }));
+
+    console.log("✅ Datos transformados de procesos:", transformedData);
+
+    return transformedData;
   } catch (err: any) {
+    console.error("❌ Error en getAllProcesses:", err);
     const message =
       err?.response?.data?.message ||
       err?.message ||
@@ -31,68 +48,16 @@ export const getAllProcesses = async (): Promise<ProcessResponse[]> => {
 };
 
 // ========================================
-// GESTIÓN DE INCIDENCIAS (ACCESO GLOBAL)
+// GESTIÓN DE INCIDENCIAS (SUPERVISOR)
 // ========================================
 
-interface CreateIncidentResponse {
-  success: boolean;
-  message: string;
-  data?: any;
-  [k: string]: any;
-}
-
 /**
- * Crear una incidencia
- * POST /api/v1/incidents
+ * Obtener incidencias pendientes (supervisor)
+ * GET /api/v1/incidents/pending
  */
-export const createIncident = async (
-  incidentData: CreateIncidentRequest
-): Promise<CreateIncidentResponse> => {
-  if (
-    !incidentData.processId ||
-    !incidentData.description ||
-    !incidentData.evidence
-  ) {
-    throw new Error("processId, description y evidence son requeridos");
-  }
-
+export const getPendingIncidences = async (): Promise<Incidence[]> => {
   try {
-    const formData = new FormData();
-    formData.append("processId", incidentData.processId);
-    formData.append("description", incidentData.description);
-    formData.append("evidence", incidentData.evidence);
-
-    const { data } = await gstApi.post<CreateIncidentResponse>(
-      "/incidents",
-      formData,
-      {
-        headers: {
-          "Content-Type": "multipart/form-data",
-        },
-      }
-    );
-
-    return data;
-  } catch (err: any) {
-    const message =
-      err?.response?.data?.message ||
-      err?.message ||
-      "Error al crear la incidencia";
-    throw new Error(message);
-  }
-};
-
-/**
- * Obtener incidencias de un proceso específico
- * GET /api/v1/incidents/process/:processId
- */
-export const getIncidencesByProcess = async (
-  processId: string
-): Promise<Incidence[]> => {
-  try {
-    const { data } = await gstApi.get<any[]>(`/incidents/process/${processId}`);
-
-    console.log("📋 Datos raw del backend para proceso", processId, ":", data);
+    const { data } = await gstApi.get<any[]>("/incidents/pending");
 
     const transformedData: Incidence[] = data
       .filter((incident: any) => {
@@ -105,11 +70,9 @@ export const getIncidencesByProcess = async (
       })
       .map((incident: any) => ({
         id: incident._id || incident.id,
-        processId: processId,
+        processId: incident.processId?._id || incident.processId,
         description: incident.description,
-        status: incident.status?.toUpperCase() === "PENDIENTE" || incident.status?.toUpperCase() === "PENDING"
-          ? "PENDING"
-          : "RESOLVED",
+        status: "PENDING",
         evidence: incident.evidence,
         createdAt: incident.createdAt,
         resolvedAt: incident.resolvedAt,
@@ -121,116 +84,75 @@ export const getIncidencesByProcess = async (
     const message =
       err?.response?.data?.message ||
       err?.message ||
-      "Error al obtener las incidencias del proceso";
+      "Error al obtener las incidencias pendientes";
     throw new Error(message);
   }
 };
 
 /**
- * Obtener todas las incidencias de todos los procesos (ACCESO GLOBAL)
- * Los supervisores pueden ver todas las incidencias del sistema
+ * Asignar incidencia a un revisor
+ * PATCH /api/v1/incidents/:incidentId/assign
  */
-export const getAllIncidences = async (): Promise<Incidence[]> => {
-  try {
-    console.log("🔍 Supervisor obteniendo todos los procesos del sistema...");
-    const processes = await getAllProcesses();
-    console.log("📋 Procesos encontrados:", processes.length, processes);
-
-    const allIncidences: Incidence[] = [];
-
-    for (const process of processes) {
-      try {
-        console.log(`🔍 Obteniendo incidencias para proceso ${process.id}...`);
-        const processIncidences = await getIncidencesByProcess(process.id);
-        console.log(`✅ Incidencias encontradas para proceso ${process.id}:`, processIncidences.length);
-        allIncidences.push(...processIncidences);
-      } catch (error) {
-        console.warn(
-          `❌ Error al obtener incidencias del proceso ${process.id}:`,
-          error
-        );
-      }
-    }
-
-    console.log("🎯 Total de incidencias cargadas:", allIncidences.length);
-    return allIncidences;
-  } catch (err: any) {
-    const message =
-      err?.response?.data?.message ||
-      err?.message ||
-      "Error al obtener las incidencias";
-    throw new Error(message);
-  }
-};
-
-/**
- * Resolver una incidencia
- * PATCH /api/v1/incidents/:id/resolve
- */
-export const resolveIncident = async (
+export const assignIncident = async (
   incidentId: string,
-  resolveData?: ResolveIncidentRequest
+  assignData: AssignIncidentRequest
 ): Promise<{ success: boolean; message: string }> => {
   try {
-    console.log("🔄 Resolviendo incidencia:", incidentId, "con datos:", resolveData);
-
-    const requestData = {
-      resolvedAt: resolveData?.resolvedAt || new Date().toISOString(),
-    };
-
-    console.log("📤 Enviando petición PATCH a:", `/incidents/${incidentId}/resolve`);
-    console.log("📤 Datos enviados:", requestData);
-
-    const { data } = await gstApi.patch(
-      `/incidents/${incidentId}/resolve`,
-      requestData
+    await gstApi.patch(
+      `/incidents/${incidentId}/assign`,
+      assignData
     );
 
-    console.log("✅ Respuesta del servidor:", data);
-    return { success: true, message: "Incidencia resuelta correctamente" };
+    return { success: true, message: "Incidencia asignada correctamente" };
   } catch (err: any) {
-    console.error("❌ Error completo al resolver incidencia:", err);
-    console.error("❌ Response data:", err?.response?.data);
-    console.error("❌ Response status:", err?.response?.status);
-
     const message =
       err?.response?.data?.error ||
       err?.response?.data?.message ||
       err?.message ||
-      "Error al resolver la incidencia";
+      "Error al asignar la incidencia";
+    throw new Error(message);
+  }
+};
+
+/**
+ * Aprobar incidencia
+ * PATCH /api/v1/incidents/:incidentId/approve
+ */
+export const approveIncident = async (
+  incidentId: string
+): Promise<{ success: boolean; message: string }> => {
+  try {
+    await gstApi.patch(`/incidents/${incidentId}/approve`);
+
+    return { success: true, message: "Incidencia aprobada correctamente" };
+  } catch (err: any) {
+    const message =
+      err?.response?.data?.error ||
+      err?.response?.data?.message ||
+      err?.message ||
+      "Error al aprobar la incidencia";
     throw new Error(message);
   }
 };
 
 // ========================================
-// GESTIÓN DE REPORTES (ACCESO PRIVILEGIADO)
+// GESTIÓN DE REPORTES (SUPERVISOR)
 // ========================================
 
 /**
- * Generar un reporte consolidado
- * POST /api/v1/reports
- * Validación de Rol: Solo revisor y supervisor pueden generar reportes
+ * Ver reporte generado
+ * GET /api/v1/reports/:reportId
  */
-export const generateReport = async (
-  reportData: GenerateReportRequest
-): Promise<ReportResponse> => {
+export const getReport = async (reportId: string): Promise<ReportResponse> => {
   try {
-    console.log("📊 Supervisor generando reporte:", reportData);
-
-    const { data } = await gstApi.post<ReportResponse>(
-      "/reports",
-      reportData
-    );
-
-    console.log("✅ Reporte generado exitosamente:", data);
+    const { data } = await gstApi.get<ReportResponse>(`/reports/${reportId}`);
     return data;
   } catch (err: any) {
-    console.error("❌ Error al generar reporte:", err?.response?.data || err);
     const message =
       err?.response?.data?.error ||
       err?.response?.data?.message ||
       err?.message ||
-      "Error al generar el reporte";
+      "Error al obtener el reporte";
     throw new Error(message);
   }
 };

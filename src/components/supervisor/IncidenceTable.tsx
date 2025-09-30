@@ -1,14 +1,12 @@
 import { useEffect, useState } from "react"
-import { Eye, CheckCircle, Search, ChevronDown, ChevronUp, Plus, Download } from "lucide-react"
-import CreateIncidenceModal from "./CreateIncidenceModal"
+import { Eye, Search, ChevronDown, ChevronUp, UserPlus, CheckCheck } from "lucide-react"
 import ViewIncidenceModal from "../revisor/ViewIncidenceModal"
-import GenerateReportModal from "./GenerateReportModal"
-import ConfirmDialog from "@/components/ui/confirm-dialog"
+import AssignIncidenceModal from "./AssignIncidenceModal"
 import type { Incidence } from "@/models/incidents"
 import {
-  useGetAllIncidencesHook,
-  useResolveIncidentHook,
-  useGetAllProcessesHook,
+  useGetPendingIncidencesHook,
+  useAssignIncidentHook,
+  useApproveIncidentHook,
 } from "@/hooks/supervisor"
 
 export default function IncidenceTable() {
@@ -18,15 +16,18 @@ export default function IncidenceTable() {
     isLoading,
     error,
     refetch: loadAllIncidents,
-  } = useGetAllIncidencesHook()
+  } = useGetPendingIncidencesHook()
 
-  const { data: processes = [], refetch: loadProcesses } = useGetAllProcessesHook()
-
-  const { resolveIncidentFn } = useResolveIncidentHook({
+  const { assignIncidentAsync } = useAssignIncidentHook({
     onSuccess: () => {
       loadAllIncidents()
-      setIsConfirmDialogOpen(false)
-      setIncidenceToResolve(null)
+      setIsAssignModalOpen(false)
+    },
+  })
+
+  const { approveIncidentAsync } = useApproveIncidentHook({
+    onSuccess: () => {
+      loadAllIncidents()
     },
   })
 
@@ -38,21 +39,12 @@ export default function IncidenceTable() {
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc")
 
   // Modales
-  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
   const [isViewModalOpen, setIsViewModalOpen] = useState(false)
-  const [isReportModalOpen, setIsReportModalOpen] = useState(false)
-  const [isConfirmDialogOpen, setIsConfirmDialogOpen] = useState(false)
+  const [isAssignModalOpen, setIsAssignModalOpen] = useState(false)
   const [selectedIncidence, setSelectedIncidence] = useState<Incidence | null>(null)
-  const [incidenceToResolve, setIncidenceToResolve] = useState<string | null>(null)
-
-  // Cargar datos al montar el componente
-  useEffect(() => {
-    loadAllIncidents()
-    loadProcesses()
-  }, [])
 
   // Filtrar incidencias
-  useEffect(() => {
+  const applyFilters = () => {
     let filtered = incidences
 
     // Filtro por término de búsqueda
@@ -61,7 +53,7 @@ export default function IncidenceTable() {
         (inc) =>
           inc.id?.toLowerCase().includes(searchTerm.toLowerCase()) ||
           inc.processId?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          inc.description?.toLowerCase().includes(searchTerm.toLowerCase())
+          inc.description?.toLowerCase().includes(searchTerm.toLowerCase()),
       )
     }
 
@@ -85,6 +77,11 @@ export default function IncidenceTable() {
     })
 
     setFilteredIncidences(filtered)
+  }
+
+  // Aplicar filtros cuando cambien los criterios
+  useEffect(() => {
+    applyFilters()
   }, [incidences, searchTerm, statusFilter, sortBy, sortDirection])
 
   const handleSort = (field: keyof Incidence) => {
@@ -96,24 +93,42 @@ export default function IncidenceTable() {
     }
   }
 
-  const handleCreateIncidence = async () => {
-    await loadAllIncidents()
+  const handleAssignIncidence = (incidence: Incidence) => {
+    setSelectedIncidence(incidence)
+    setIsAssignModalOpen(true)
   }
 
-  const handleResolveIncidence = async (incidenceId: string) => {
+  const handleApproveIncidence = async (incidenceId: string) => {
     if (!incidenceId) {
       console.error("❌ Error: ID de incidencia no válido:", incidenceId)
-      alert("Error: No se puede resolver la incidencia. ID no válido.")
+      alert("Error: No se puede aprobar la incidencia. ID no válido.")
       return
     }
 
-    setIncidenceToResolve(incidenceId)
-    setIsConfirmDialogOpen(true)
+    if (!confirm("¿Estás seguro de que deseas aprobar esta incidencia?")) {
+      return
+    }
+
+    try {
+      await approveIncidentAsync(incidenceId)
+    } catch (error: any) {
+      console.error("Error al aprobar incidencia:", error)
+      alert(`Error al aprobar la incidencia: ${error.message}`)
+    }
   }
 
-  const confirmResolveIncidence = async () => {
-    if (!incidenceToResolve) return
-    resolveIncidentFn(incidenceToResolve)
+  const handleAssignSubmit = async (revisorId: string) => {
+    if (!selectedIncidence?.id) {
+      alert("Error: No se puede asignar la incidencia. ID no válido.")
+      return
+    }
+
+    try {
+      await assignIncidentAsync(selectedIncidence.id, { revisorId })
+    } catch (error: any) {
+      console.error("Error al asignar incidencia:", error)
+      alert(`Error al asignar la incidencia: ${error.message}`)
+    }
   }
 
   const handleViewIncidence = (incidence: Incidence) => {
@@ -139,7 +154,7 @@ export default function IncidenceTable() {
           <div className="bg-red-50 border-b border-red-200 p-4">
             <div className="flex items-center">
               <div className="text-red-800">
-                <strong>Error:</strong> {error.message}
+                <strong>Error:</strong> {error instanceof Error ? error.message : String(error)}
                 <button
                   onClick={() => loadAllIncidents()}
                   className="ml-4 text-red-600 underline hover:text-red-800"
@@ -160,13 +175,13 @@ export default function IncidenceTable() {
                 placeholder="Buscar por ID, proceso o descripción..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-200 focus:border-blue-500 transition-all duration-200 outline-none"
+                className="w-full pl-10 pr-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-emerald-200 focus:border-emerald-500 transition-all duration-200 outline-none"
               />
               <Search size={18} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
             </div>
 
             <select
-              className="px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-200 focus:border-blue-500 transition-all duration-200 outline-none"
+              className="px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-emerald-200 focus:border-emerald-500 transition-all duration-200 outline-none"
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value as "ALL" | "PENDING" | "RESOLVED")}
             >
@@ -174,26 +189,10 @@ export default function IncidenceTable() {
               <option value="PENDING">Pendientes</option>
               <option value="RESOLVED">Resueltas</option>
             </select>
-
-            <button
-              onClick={() => setIsReportModalOpen(true)}
-              className="flex items-center gap-2 px-4 py-2 bg-purple-500 text-white rounded-lg hover:bg-purple-600 transition-colors"
-            >
-              <Download size={16} />
-              <span>Generar Reporte</span>
-            </button>
-
-            <button
-              onClick={() => setIsCreateModalOpen(true)}
-              className="flex items-center gap-2 px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
-            >
-              <Plus size={16} />
-              <span>Nueva Incidencia</span>
-            </button>
           </div>
         </div>
 
-        {/* Tabla - continuación igual que revisor... */}
+        {/* Tabla */}
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
@@ -209,7 +208,10 @@ export default function IncidenceTable() {
                       (sortDirection === "asc" ? <ChevronUp size={15} /> : <ChevronDown size={15} />)}
                   </div>
                 </th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th
+                  scope="col"
+                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                >
                   Descripción
                 </th>
                 <th
@@ -223,7 +225,10 @@ export default function IncidenceTable() {
                       (sortDirection === "asc" ? <ChevronUp size={15} /> : <ChevronDown size={15} />)}
                   </div>
                 </th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th
+                  scope="col"
+                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                >
                   Evidencia
                 </th>
                 <th
@@ -259,7 +264,10 @@ export default function IncidenceTable() {
                       (sortDirection === "asc" ? <ChevronUp size={15} /> : <ChevronDown size={15} />)}
                   </div>
                 </th>
-                <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th
+                  scope="col"
+                  className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider"
+                >
                   Acciones
                 </th>
               </tr>
@@ -269,7 +277,7 @@ export default function IncidenceTable() {
                 <tr>
                   <td colSpan={8} className="px-6 py-8 text-center text-gray-500">
                     <div className="flex items-center justify-center">
-                      <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-500 mr-2"></div>
+                      <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-emerald-500 mr-2"></div>
                       Cargando incidencias...
                     </div>
                   </td>
@@ -287,11 +295,10 @@ export default function IncidenceTable() {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <span
-                        className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                          incidence.status === "RESOLVED"
-                            ? "bg-green-100 text-green-800"
-                            : "bg-amber-100 text-amber-800"
-                        }`}
+                        className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${incidence.status === "RESOLVED"
+                          ? "bg-emerald-100 text-emerald-800"
+                          : "bg-amber-100 text-amber-800"
+                          }`}
                       >
                         {incidence.status === "RESOLVED" ? "Resuelta" : "Pendiente"}
                       </span>
@@ -299,9 +306,7 @@ export default function IncidenceTable() {
                     <td className="px-6 py-4 whitespace-nowrap">
                       {incidence.evidence && incidence.evidence.length > 0 ? (
                         <div className="flex items-center gap-2">
-                          <span className="text-blue-600">
-                            {incidence.evidence.length} archivo{incidence.evidence.length > 1 ? "s" : ""}
-                          </span>
+                          <span className="text-blue-600">{incidence.evidence.length} archivo{incidence.evidence.length > 1 ? 's' : ''}</span>
                           <button
                             onClick={() => handleViewIncidence(incidence)}
                             className="text-blue-600 hover:text-blue-800 underline text-sm"
@@ -314,22 +319,17 @@ export default function IncidenceTable() {
                       )}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-gray-700">
-                      <div
-                        className="max-w-xs truncate"
-                        title={
-                          typeof incidence.createdBy === "string"
-                            ? incidence.createdBy
-                            : incidence.createdBy?.name || incidence.createdBy?.email || "Usuario"
-                        }
-                      >
-                        {typeof incidence.createdBy === "string"
-                          ? incidence.createdBy
-                          : incidence.createdBy?.name || incidence.createdBy?.email || "Usuario"}
+                      <div className="max-w-xs truncate" title={typeof incidence.createdBy === 'string' ? incidence.createdBy : incidence.createdBy?.name || incidence.createdBy?.email || 'Usuario'}>
+                        {typeof incidence.createdBy === 'string' ? incidence.createdBy : incidence.createdBy?.name || incidence.createdBy?.email || 'Usuario'}
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-gray-700">{formatDate(incidence.createdAt)}</td>
                     <td className="px-6 py-4 whitespace-nowrap text-gray-700">
-                      {incidence.resolvedAt ? formatDate(incidence.resolvedAt) : <span className="text-gray-400">-</span>}
+                      {incidence.resolvedAt ? (
+                        formatDate(incidence.resolvedAt)
+                      ) : (
+                        <span className="text-gray-400">-</span>
+                      )}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                       <div className="flex justify-end space-x-2">
@@ -341,13 +341,22 @@ export default function IncidenceTable() {
                           <Eye size={18} className="text-gray-500" />
                         </button>
                         {incidence.status === "PENDING" && incidence.id && (
-                          <button
-                            className="p-1 rounded-full hover:bg-gray-100"
-                            title="Marcar como resuelta"
-                            onClick={() => handleResolveIncidence(incidence.id)}
-                          >
-                            <CheckCircle size={18} className="text-green-500" />
-                          </button>
+                          <>
+                            <button
+                              className="p-1 rounded-full hover:bg-gray-100"
+                              title="Asignar a revisor"
+                              onClick={() => handleAssignIncidence(incidence)}
+                            >
+                              <UserPlus size={18} className="text-blue-500" />
+                            </button>
+                            <button
+                              className="p-1 rounded-full hover:bg-gray-100"
+                              title="Aprobar incidencia"
+                              onClick={() => handleApproveIncidence(incidence.id)}
+                            >
+                              <CheckCheck size={18} className="text-emerald-500" />
+                            </button>
+                          </>
                         )}
                       </div>
                     </td>
@@ -373,13 +382,7 @@ export default function IncidenceTable() {
         </div>
       </div>
 
-      {/* Modales */}
-      <CreateIncidenceModal
-        isOpen={isCreateModalOpen}
-        onClose={() => setIsCreateModalOpen(false)}
-        onSave={handleCreateIncidence}
-      />
-
+      {/* Modal para ver detalles de incidencia */}
       {selectedIncidence && (
         <ViewIncidenceModal
           isOpen={isViewModalOpen}
@@ -391,21 +394,17 @@ export default function IncidenceTable() {
         />
       )}
 
-      <GenerateReportModal isOpen={isReportModalOpen} onClose={() => setIsReportModalOpen(false)} processes={processes} />
-
-      <ConfirmDialog
-        isOpen={isConfirmDialogOpen}
-        onClose={() => {
-          setIsConfirmDialogOpen(false)
-          setIncidenceToResolve(null)
-        }}
-        onConfirm={confirmResolveIncidence}
-        title="Confirmar resolución"
-        message="¿Estás seguro de que deseas marcar esta incidencia como resuelta? Esta acción no se puede deshacer."
-        confirmText="Marcar como resuelta"
-        cancelText="Cancelar"
-        variant="success"
-      />
+      {/* Modal para asignar incidencia */}
+      {selectedIncidence && (
+        <AssignIncidenceModal
+          isOpen={isAssignModalOpen}
+          onClose={() => {
+            setIsAssignModalOpen(false)
+            setSelectedIncidence(null)
+          }}
+          onAssign={handleAssignSubmit}
+        />
+      )}
     </>
   )
 }

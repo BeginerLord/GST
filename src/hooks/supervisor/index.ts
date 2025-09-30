@@ -3,27 +3,24 @@ import { toast } from "sonner";
 import { useEffect } from "react";
 import {
   getAllProcesses,
-  createIncident,
-  getIncidencesByProcess,
-  getAllIncidences,
-  resolveIncident,
-  generateReport,
+  getPendingIncidences,
+  assignIncident,
+  approveIncident,
+  getReport,
 } from "@/service/supervisor";
 import type {
-  CreateIncidentRequest,
-  ResolveIncidentRequest,
   ProcessResponse,
   Incidence,
-  GenerateReportRequest,
   ReportResponse,
 } from "@/models/incidents";
+import type { AssignIncidentRequest } from "@/models/supervisor";
 
 // ========================================
 // HOOKS DE GESTIÓN DE PROCESOS
 // ========================================
 
 /**
- * Hook para obtener todos los procesos del sistema (acceso global)
+ * Hook para obtener procesos en revisión (supervisor)
  * Ejemplo de uso:
  * const { data: processes, isLoading, error, refetch } = useGetAllProcessesHook();
  */
@@ -69,106 +66,18 @@ export type UseGetAllProcessesHookReturn = ReturnType<typeof useGetAllProcessesH
 // ========================================
 
 /**
- * Hook para crear una incidencia
+ * Hook para obtener incidencias pendientes
  * Ejemplo de uso:
- * const { createIncidentFn, isPending } = useCreateIncidentHook();
- * createIncidentFn({ processId, description, evidence });
+ * const { data: pendingIncidences, isLoading, error, refetch } = useGetPendingIncidencesHook();
  */
-export const useCreateIncidentHook = (options?: {
-  onSuccess?: (data: any) => void;
-  onError?: (error: Error) => void;
-}) => {
-  const mutation = useMutation({
-    mutationKey: ["supervisor", "incidents", "create"],
-    mutationFn: (incidentData: CreateIncidentRequest) =>
-      createIncident(incidentData),
-    onSuccess: (data) => {
-      toast.success("Incidencia creada exitosamente");
-      options?.onSuccess?.(data);
-    },
-    onError: (error: any) => {
-      const message =
-        error instanceof Error
-          ? error.message
-          : "Ocurrió un error al crear la incidencia";
-      toast.error(message);
-      options?.onError?.(error instanceof Error ? error : new Error(message));
-    },
-  });
-
-  return {
-    createIncidentFn: (incidentData: CreateIncidentRequest) =>
-      mutation.mutate(incidentData),
-    createIncidentAsync: (incidentData: CreateIncidentRequest) =>
-      mutation.mutateAsync(incidentData),
-    ...mutation,
-  };
-};
-
-export type UseCreateIncidentHookReturn = ReturnType<
-  typeof useCreateIncidentHook
->;
-
-/**
- * Hook para obtener incidencias de un proceso específico
- * Ejemplo de uso:
- * const { data: incidences, isLoading, error } = useGetIncidencesByProcessHook(processId);
- */
-export const useGetIncidencesByProcessHook = (
-  processId: string,
-  options?: {
-    enabled?: boolean;
-    onSuccess?: (data: Incidence[]) => void;
-    onError?: (error: Error) => void;
-  }
-) => {
-  const query = useQuery({
-    queryKey: ["supervisor", "incidents", "process", processId],
-    queryFn: () => getIncidencesByProcess(processId),
-    enabled: options?.enabled ?? true,
-  });
-
-  useEffect(() => {
-    if (query.data && query.isSuccess && options?.onSuccess) {
-      options.onSuccess(query.data);
-    }
-  }, [query.data, query.isSuccess, options?.onSuccess]);
-
-  useEffect(() => {
-    if (query.error && query.isError) {
-      const message =
-        query.error instanceof Error
-          ? query.error.message
-          : "Error al obtener las incidencias del proceso";
-      toast.error(message);
-      if (options?.onError) {
-        options.onError(
-          query.error instanceof Error ? query.error : new Error(message)
-        );
-      }
-    }
-  }, [query.error, query.isError, options?.onError]);
-
-  return query;
-};
-
-export type UseGetIncidencesByProcessHookReturn = ReturnType<
-  typeof useGetIncidencesByProcessHook
->;
-
-/**
- * Hook para obtener todas las incidencias del sistema (acceso global)
- * Ejemplo de uso:
- * const { data: incidences, isLoading, error, refetch } = useGetAllIncidencesHook();
- */
-export const useGetAllIncidencesHook = (options?: {
+export const useGetPendingIncidencesHook = (options?: {
   enabled?: boolean;
   onSuccess?: (data: Incidence[]) => void;
   onError?: (error: Error) => void;
 }) => {
   const query = useQuery({
-    queryKey: ["supervisor", "incidents", "all"],
-    queryFn: getAllIncidences,
+    queryKey: ["supervisor", "incidents", "pending"],
+    queryFn: getPendingIncidences,
     enabled: options?.enabled ?? true,
   });
 
@@ -183,7 +92,7 @@ export const useGetAllIncidencesHook = (options?: {
       const message =
         query.error instanceof Error
           ? query.error.message
-          : "Error al obtener las incidencias";
+          : "Error al obtener las incidencias pendientes";
       toast.error(message);
       if (options?.onError) {
         options.onError(
@@ -196,58 +105,92 @@ export const useGetAllIncidencesHook = (options?: {
   return query;
 };
 
-export type UseGetAllIncidencesHookReturn = ReturnType<
-  typeof useGetAllIncidencesHook
+export type UseGetPendingIncidencesHookReturn = ReturnType<
+  typeof useGetPendingIncidencesHook
 >;
 
 /**
- * Hook para resolver una incidencia
+ * Hook para asignar incidencia a revisor
  * Ejemplo de uso:
- * const { resolveIncidentFn, isPending } = useResolveIncidentHook();
- * resolveIncidentFn({ incidentId, resolveData });
+ * const { assignIncidentFn, isPending } = useAssignIncidentHook();
+ * assignIncidentFn({ incidentId, assignData });
  */
-export const useResolveIncidentHook = (options?: {
+export const useAssignIncidentHook = (options?: {
   onSuccess?: (data: any) => void;
   onError?: (error: Error) => void;
 }) => {
   const mutation = useMutation({
-    mutationKey: ["supervisor", "incidents", "resolve"],
+    mutationKey: ["supervisor", "incidents", "assign"],
     mutationFn: ({
       incidentId,
-      resolveData,
+      assignData,
     }: {
       incidentId: string;
-      resolveData?: ResolveIncidentRequest;
-    }) => resolveIncident(incidentId, resolveData),
+      assignData: AssignIncidentRequest;
+    }) => assignIncident(incidentId, assignData),
     onSuccess: (data) => {
-      toast.success("Incidencia resuelta exitosamente");
+      toast.success("Incidencia asignada exitosamente");
       options?.onSuccess?.(data);
     },
     onError: (error: any) => {
       const message =
         error instanceof Error
           ? error.message
-          : "Ocurrió un error al resolver la incidencia";
+          : "Ocurrió un error al asignar la incidencia";
       toast.error(message);
       options?.onError?.(error instanceof Error ? error : new Error(message));
     },
   });
 
   return {
-    resolveIncidentFn: (
-      incidentId: string,
-      resolveData?: ResolveIncidentRequest
-    ) => mutation.mutate({ incidentId, resolveData }),
-    resolveIncidentAsync: (
-      incidentId: string,
-      resolveData?: ResolveIncidentRequest
-    ) => mutation.mutateAsync({ incidentId, resolveData }),
+    assignIncidentFn: (incidentId: string, assignData: AssignIncidentRequest) =>
+      mutation.mutate({ incidentId, assignData }),
+    assignIncidentAsync: (incidentId: string, assignData: AssignIncidentRequest) =>
+      mutation.mutateAsync({ incidentId, assignData }),
     ...mutation,
   };
 };
 
-export type UseResolveIncidentHookReturn = ReturnType<
-  typeof useResolveIncidentHook
+export type UseAssignIncidentHookReturn = ReturnType<
+  typeof useAssignIncidentHook
+>;
+
+/**
+ * Hook para aprobar incidencia
+ * Ejemplo de uso:
+ * const { approveIncidentFn, isPending } = useApproveIncidentHook();
+ * approveIncidentFn(incidentId);
+ */
+export const useApproveIncidentHook = (options?: {
+  onSuccess?: (data: any) => void;
+  onError?: (error: Error) => void;
+}) => {
+  const mutation = useMutation({
+    mutationKey: ["supervisor", "incidents", "approve"],
+    mutationFn: (incidentId: string) => approveIncident(incidentId),
+    onSuccess: (data) => {
+      toast.success("Incidencia aprobada exitosamente");
+      options?.onSuccess?.(data);
+    },
+    onError: (error: any) => {
+      const message =
+        error instanceof Error
+          ? error.message
+          : "Ocurrió un error al aprobar la incidencia";
+      toast.error(message);
+      options?.onError?.(error instanceof Error ? error : new Error(message));
+    },
+  });
+
+  return {
+    approveIncidentFn: (incidentId: string) => mutation.mutate(incidentId),
+    approveIncidentAsync: (incidentId: string) => mutation.mutateAsync(incidentId),
+    ...mutation,
+  };
+};
+
+export type UseApproveIncidentHookReturn = ReturnType<
+  typeof useApproveIncidentHook
 >;
 
 // ========================================
@@ -255,42 +198,46 @@ export type UseResolveIncidentHookReturn = ReturnType<
 // ========================================
 
 /**
- * Hook para generar un reporte consolidado
+ * Hook para obtener un reporte por ID
  * Ejemplo de uso:
- * const { generateReportFn, isPending } = useGenerateReportHook();
- * generateReportFn({ title, processIds });
+ * const { data: report, isLoading, error } = useGetReportHook(reportId);
  */
-export const useGenerateReportHook = (options?: {
-  onSuccess?: (data: ReportResponse) => void;
-  onError?: (error: Error) => void;
-}) => {
-  const mutation = useMutation({
-    mutationKey: ["supervisor", "reports", "generate"],
-    mutationFn: (reportData: GenerateReportRequest) =>
-      generateReport(reportData),
-    onSuccess: (data) => {
-      toast.success("Reporte generado exitosamente");
-      options?.onSuccess?.(data);
-    },
-    onError: (error: any) => {
-      const message =
-        error instanceof Error
-          ? error.message
-          : "Ocurrió un error al generar el reporte";
-      toast.error(message);
-      options?.onError?.(error instanceof Error ? error : new Error(message));
-    },
+export const useGetReportHook = (
+  reportId: string,
+  options?: {
+    enabled?: boolean;
+    onSuccess?: (data: ReportResponse) => void;
+    onError?: (error: Error) => void;
+  }
+) => {
+  const query = useQuery({
+    queryKey: ["supervisor", "reports", reportId],
+    queryFn: () => getReport(reportId),
+    enabled: options?.enabled ?? true,
   });
 
-  return {
-    generateReportFn: (reportData: GenerateReportRequest) =>
-      mutation.mutate(reportData),
-    generateReportAsync: (reportData: GenerateReportRequest) =>
-      mutation.mutateAsync(reportData),
-    ...mutation,
-  };
+  useEffect(() => {
+    if (query.data && query.isSuccess && options?.onSuccess) {
+      options.onSuccess(query.data);
+    }
+  }, [query.data, query.isSuccess, options?.onSuccess]);
+
+  useEffect(() => {
+    if (query.error && query.isError) {
+      const message =
+        query.error instanceof Error
+          ? query.error.message
+          : "Error al obtener el reporte";
+      toast.error(message);
+      if (options?.onError) {
+        options.onError(
+          query.error instanceof Error ? query.error : new Error(message)
+        );
+      }
+    }
+  }, [query.error, query.isError, options?.onError]);
+
+  return query;
 };
 
-export type UseGenerateReportHookReturn = ReturnType<
-  typeof useGenerateReportHook
->;
+export type UseGetReportHookReturn = ReturnType<typeof useGetReportHook>;

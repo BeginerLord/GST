@@ -4,7 +4,8 @@
       "Bash(move \"src\\.env\" \".env\")",
       "Bash(mv:*)",
       "Bash(curl:*)",
-      "Bash(pnpm build:*)"
+      "Bash(pnpm build:*)",
+      "Bash(npm run build:*)"
     ],
     "deny": [],
     "ask": []

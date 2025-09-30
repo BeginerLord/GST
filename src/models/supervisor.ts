@@ -27,3 +27,16 @@ export interface Activity {
   userId?: string;
   userName?: string;
 }
+
+// Modelo para asignar incidencia a revisor
+export interface AssignIncidentRequest {
+  revisorId: string;
+}
+
+// Modelo para usuario revisor
+export interface Revisor {
+  _id: string;
+  name: string;
+  email: string;
+  role: "revisor";
+}
