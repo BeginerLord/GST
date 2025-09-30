@@ -1,14 +1,15 @@
-import { AlertTriangle, CheckCircle } from "lucide-react"
+import { AlertTriangle, CheckCircle, Loader2 } from "lucide-react"
 
 interface ConfirmDialogProps {
     isOpen: boolean
     onClose: () => void
-    onConfirm: () => void
+    onConfirm: () => void | Promise<void>
     title: string
     message: string
     confirmText?: string
     cancelText?: string
     variant?: "danger" | "warning" | "success"
+    isLoading?: boolean
 }
 
 export default function ConfirmDialog({
@@ -19,13 +20,23 @@ export default function ConfirmDialog({
     message,
     confirmText = "Confirmar",
     cancelText = "Cancelar",
-    variant = "warning"
+    variant = "warning",
+    isLoading = false
 }: ConfirmDialogProps) {
+    console.log("🔘 [MODAL] ConfirmDialog renderizado con isOpen:", isOpen)
+    console.log("🔘 [MODAL] onConfirm recibido:", typeof onConfirm, onConfirm)
+
     if (!isOpen) return null
 
     const handleConfirm = () => {
-        onConfirm()
-        onClose()
+        console.log("🔘 [MODAL] Iniciando handleConfirm")
+        try {
+            console.log("🔘 [MODAL] Ejecutando onConfirm...")
+            onConfirm()
+            console.log("🔘 [MODAL] onConfirm ejecutado exitosamente")
+        } catch (error) {
+            console.error("❌ [MODAL] Error in confirm action:", error)
+        }
     }
 
     const getVariantStyles = () => {
@@ -92,15 +103,30 @@ export default function ConfirmDialog({
                     <div className="mt-5 sm:mt-4 sm:flex sm:flex-row-reverse">
                         <button
                             type="button"
-                            className={`w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 text-base font-medium text-white focus:outline-none focus:ring-2 focus:ring-offset-2 sm:ml-3 sm:w-auto sm:text-sm transition-colors ${styles.confirmButton}`}
-                            onClick={handleConfirm}
+                            className={`w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 text-base font-medium text-white focus:outline-none focus:ring-2 focus:ring-offset-2 sm:ml-3 sm:w-auto sm:text-sm transition-colors ${styles.confirmButton} ${isLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
+                            onClick={() => {
+                                console.log("🔘 [MODAL] Botón confirmar presionado")
+                                handleConfirm()
+                            }}
+                            disabled={isLoading}
                         >
-                            {confirmText}
+                            {isLoading ? (
+                                <>
+                                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                                    Procesando...
+                                </>
+                            ) : (
+                                confirmText
+                            )}
                         </button>
                         <button
                             type="button"
-                            className="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:mt-0 sm:w-auto sm:text-sm transition-colors"
-                            onClick={onClose}
+                            className={`mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:mt-0 sm:w-auto sm:text-sm transition-colors ${isLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
+                            onClick={() => {
+                                console.log("🔘 [MODAL] Botón cancelar presionado")
+                                onClose()
+                            }}
+                            disabled={isLoading}
                         >
                             {cancelText}
                         </button>

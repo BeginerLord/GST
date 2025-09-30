@@ -3,7 +3,7 @@ import { Eye, CheckCircle, Search, ChevronDown, ChevronUp, Plus, Download } from
 import CreateIncidenceModal from "./CreateIncidenceModal"
 import ViewIncidenceModal from "./ViewIncidenceModal"
 import GenerateReportModal from "./GenerateReportModal"
-import ConfirmDialog from "@/components/ui/confirm-dialog"
+import SimpleConfirmDialog from "@/components/SimpleConfirmDialog"
 import type { Incidence } from "@/models/incidents"
 import { useIncidents } from "@/hooks/useIncidents"
 import { useProcesses } from "@/hooks/useProcesses"
@@ -102,13 +102,15 @@ export default function IncidenceTable() {
     }
   }
 
-  const handleResolveIncidence = async (incidenceId: string) => {
+  const handleResolveIncidence = (incidenceId: string) => {
+    console.log("🎯 Iniciando proceso de resolución para incidencia:", incidenceId)
+
     if (!incidenceId) {
       console.error("❌ Error: ID de incidencia no válido:", incidenceId);
-      alert("Error: No se puede resolver la incidencia. ID no válido.");
       return;
     }
 
+    console.log("✅ ID válido, abriendo modal de confirmación")
     // Abrir el modal de confirmación
     setIncidenceToResolve(incidenceId)
     setIsConfirmDialogOpen(true)
@@ -117,11 +119,15 @@ export default function IncidenceTable() {
   const confirmResolveIncidence = async () => {
     if (!incidenceToResolve) return
 
+    console.log("🔄 Iniciando resolución de incidencia:", incidenceToResolve)
+
     try {
       await resolveIncidentById(incidenceToResolve)
+      console.log("✅ Incidencia resuelta exitosamente")
+      // Recargar las incidencias para reflejar los cambios
+      await loadAllIncidents()
     } catch (error: any) {
-      console.error("Error al resolver incidencia:", error)
-      alert(`Error al resolver la incidencia: ${error.message}`)
+      console.error("❌ Error al resolver incidencia:", error)
     }
   }
 
@@ -410,7 +416,7 @@ export default function IncidenceTable() {
       />
 
       {/* Modal de confirmación para resolver incidencia */}
-      <ConfirmDialog
+      <SimpleConfirmDialog
         isOpen={isConfirmDialogOpen}
         onClose={() => {
           setIsConfirmDialogOpen(false)

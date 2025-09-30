@@ -1,3 +1,10 @@
+// Modelo para crear un nuevo proceso (revisor)
+export interface CreateProcessRequest {
+  name: string;
+  description: string;
+  dueDate: string; // ISO string format
+}
+
 // Modelo para crear una nueva incidencia
 export interface CreateIncidentRequest {
   processId: string;

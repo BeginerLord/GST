@@ -1,5 +1,6 @@
 import { gstApi } from "@/api";
 import type {
+  CreateProcessRequest,
   CreateIncidentRequest,
   ResolveIncidentRequest,
   ProcessResponse,
@@ -14,6 +15,106 @@ interface CreateIncidentResponse {
   data?: any;
   [k: string]: any;
 }
+
+// ========================================
+// GESTIÓN DE PROCESOS (REVISOR)
+// ========================================
+
+/**
+ * Crear un nuevo proceso (revisor)
+ * POST /reviewer (según Postman)
+ */
+export const createProcess = async (
+  processData: CreateProcessRequest
+): Promise<ProcessResponse> => {
+  try {
+    console.log("📝 Creando proceso:", processData);
+    console.log(
+      "🌐 URL que se formará:",
+      `${gstApi.defaults.baseURL}/reviewer`
+    );
+
+    const { data } = await gstApi.post<any>("/reviewer", processData);
+
+    console.log("✅ Proceso creado exitosamente:", data);
+
+    // Transformar respuesta del backend
+    const transformedData: ProcessResponse = {
+      id: data._id || data.id,
+      name: data.name,
+      description: data.description,
+      status: data.status || "pendiente",
+      dueDate: data.dueDate ? new Date(data.dueDate) : new Date(),
+      createdAt: data.createdAt ? new Date(data.createdAt) : new Date(),
+      createdBy: {
+        name: data.createdBy?.name || data.createdBy?.username || "Usuario",
+        email: data.createdBy?.email || "",
+      },
+    };
+
+    return transformedData;
+  } catch (err: any) {
+    console.error("❌ Error al crear proceso:", err?.response?.data || err);
+    const message =
+      err?.response?.data?.error ||
+      err?.response?.data?.message ||
+      err?.message ||
+      "Error al crear el proceso";
+    throw new Error(message);
+  }
+};
+
+/**
+ * Obtener procesos asignados al revisor
+ * GET /api/v1/processes/reviewer
+ */
+export const getProcessesForReviewer = async (): Promise<ProcessResponse[]> => {
+  try {
+    const { data } = await gstApi.get<any[]>("/processes/reviewer");
+
+    console.log("📦 Datos crudos de procesos del revisor:", data);
+
+    // Transformar datos del backend al formato esperado
+    const transformedData: ProcessResponse[] = data.map((process: any) => ({
+      id: process._id || process.id,
+      name: process.name || process.title || "Sin nombre",
+      description: process.description || "",
+      status: process.status || "pendiente",
+      dueDate: process.dueDate ? new Date(process.dueDate) : new Date(),
+      createdAt: process.createdAt ? new Date(process.createdAt) : new Date(),
+      createdBy: {
+        name:
+          process.createdBy?.name ||
+          process.createdBy?.username ||
+          "Usuario desconocido",
+        email: process.createdBy?.email || "",
+      },
+    }));
+
+    console.log(
+      "✅ Datos transformados de procesos del revisor:",
+      transformedData
+    );
+
+    return transformedData;
+  } catch (err: any) {
+    console.error("❌ Error en getProcessesForReviewer:", err);
+    const message =
+      err?.response?.data?.message ||
+      err?.message ||
+      "Error al obtener los procesos";
+    throw new Error(message);
+  }
+};
+
+// ========================================
+// GESTIÓN DE INCIDENCIAS (REVISOR)
+// ========================================
+
+/**
+ * Crear una nueva incidencia
+ * POST /api/v1/incidents
+ */
 
 export const createIncident = async (
   incidentData: CreateIncidentRequest
@@ -53,20 +154,10 @@ export const createIncident = async (
   }
 };
 
-export const getProcessesForReviewer = async (): Promise<ProcessResponse[]> => {
-  try {
-    const { data } = await gstApi.get<ProcessResponse[]>("/processes/reviewer");
-    return data;
-  } catch (err: any) {
-    const message =
-      err?.response?.data?.message ||
-      err?.message ||
-      "Error al obtener los procesos";
-    throw new Error(message);
-  }
-};
-
-// Obtener incidencias de un proceso específico
+/**
+ * Obtener incidencias de un proceso específico
+ * GET /api/v1/incidents/process/:processId
+ */
 export const getIncidencesByProcess = async (
   processId: string
 ): Promise<Incidence[]> => {
@@ -90,9 +181,11 @@ export const getIncidencesByProcess = async (
         id: incident._id || incident.id, // El backend puede usar _id o id
         processId: processId, // Usar el processId pasado como parámetro
         description: incident.description,
-        status: incident.status?.toUpperCase() === "PENDIENTE" || incident.status?.toUpperCase() === "PENDING"
-          ? "PENDING"
-          : "RESOLVED",
+        status:
+          incident.status?.toUpperCase() === "PENDIENTE" ||
+          incident.status?.toUpperCase() === "PENDING"
+            ? "PENDING"
+            : "RESOLVED",
         evidence: incident.evidence,
         createdAt: incident.createdAt,
         resolvedAt: incident.resolvedAt,
@@ -109,7 +202,10 @@ export const getIncidencesByProcess = async (
   }
 };
 
-// Obtener todas las incidencias de todos los procesos asignados al revisor
+/**
+ * Obtener todas las incidencias de todos los procesos asignados al revisor
+ * (Función helper que combina múltiples llamadas)
+ */
 export const getAllIncidencesForReviewer = async (): Promise<Incidence[]> => {
   try {
     // Primero obtener todos los procesos asignados al revisor
@@ -124,7 +220,10 @@ export const getAllIncidencesForReviewer = async (): Promise<Incidence[]> => {
       try {
         console.log(`🔍 Obteniendo incidencias para proceso ${process.id}...`);
         const processIncidences = await getIncidencesByProcess(process.id);
-        console.log(`✅ Incidencias encontradas para proceso ${process.id}:`, processIncidences.length);
+        console.log(
+          `✅ Incidencias encontradas para proceso ${process.id}:`,
+          processIncidences.length
+        );
         allIncidences.push(...processIncidences);
       } catch (error) {
         console.warn(
@@ -146,54 +245,71 @@ export const getAllIncidencesForReviewer = async (): Promise<Incidence[]> => {
   }
 };
 
-// Resolver una incidencia
+/**
+ * Resolver una incidencia
+ * PATCH /api/v1/incidents/:incidentId/resolve
+ */
 export const resolveIncident = async (
   incidentId: string,
   resolveData?: ResolveIncidentRequest
 ): Promise<{ success: boolean; message: string }> => {
   try {
-    console.log("🔄 Resolviendo incidencia:", incidentId, "con datos:", resolveData);
+    console.log(
+      "🔄 [SERVICIO] Resolviendo incidencia:",
+      incidentId,
+      "con datos:",
+      resolveData
+    );
 
     const requestData = {
       resolvedAt: resolveData?.resolvedAt || new Date().toISOString(),
     };
 
-    console.log("📤 Enviando petición PATCH a:", `/incidents/${incidentId}/resolve`);
-    console.log("📤 Datos enviados:", requestData);
-
-    const { data } = await gstApi.patch(
-      `/incidents/${incidentId}/resolve`,
-      requestData
+    const url = `/incidents/${incidentId}/resolve`;
+    console.log("📤 [SERVICIO] Enviando petición PATCH a:", url);
+    console.log(
+      "📤 [SERVICIO] URL completa:",
+      `${gstApi.defaults.baseURL}${url}`
     );
+    console.log("📤 [SERVICIO] Datos enviados:", requestData);
 
-    console.log("✅ Respuesta del servidor:", data);
+    const { data } = await gstApi.patch(url, requestData);
+
+    console.log("✅ [SERVICIO] Respuesta exitosa del servidor:", data);
     return { success: true, message: "Incidencia resuelta correctamente" };
   } catch (err: any) {
-    console.error("❌ Error completo al resolver incidencia:", err);
-    console.error("❌ Response data:", err?.response?.data);
-    console.error("❌ Response status:", err?.response?.status);
-    console.error("❌ Request config:", err?.config);
+    console.error("❌ [SERVICIO] Error completo al resolver incidencia:", err);
+    console.error("❌ [SERVICIO] Response data:", err?.response?.data);
+    console.error("❌ [SERVICIO] Response status:", err?.response?.status);
+    console.error("❌ [SERVICIO] Response headers:", err?.response?.headers);
+    console.error("❌ [SERVICIO] Request config:", err?.config);
 
     const message =
       err?.response?.data?.error ||
       err?.response?.data?.message ||
       err?.message ||
       "Error al resolver la incidencia";
+
+    console.error("❌ [SERVICIO] Mensaje de error final:", message);
     throw new Error(message);
   }
 };
 
-// Generar reporte
+// ========================================
+// GESTIÓN DE REPORTES (REVISOR)
+// ========================================
+
+/**
+ * Generar reporte PDF de un proceso
+ * POST /api/v1/reports
+ */
 export const generateReport = async (
   reportData: GenerateReportRequest
 ): Promise<ReportResponse> => {
   try {
     console.log("📊 Enviando datos para generar reporte:", reportData);
 
-    const { data } = await gstApi.post<ReportResponse>(
-      "/reports",
-      reportData
-    );
+    const { data } = await gstApi.post<ReportResponse>("/reports", reportData);
 
     console.log("✅ Reporte generado exitosamente:", data);
     return data;
