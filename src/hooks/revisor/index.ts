@@ -2,7 +2,6 @@ import { useMutation, useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { useEffect } from "react";
 import {
-  createProcess,
   createIncident,
   getProcessesForReviewer,
   getIncidencesByProcess,
@@ -11,7 +10,6 @@ import {
   generateReport,
 } from "@/service/revisor";
 import type {
-  CreateProcessRequest,
   CreateIncidentRequest,
   ResolveIncidentRequest,
   ProcessResponse,
@@ -24,38 +22,8 @@ import type {
 // HOOKS PARA PROCESOS (REVISOR)
 // ========================================
 
-/**
- * Hook para crear un nuevo proceso
- */
-export const useCreateProcessHook = (options?: {
-  onSuccess?: (data: ProcessResponse) => void;
-  onError?: (error: Error) => void;
-}) => {
-  const mutation = useMutation({
-    mutationKey: ["processes", "create"],
-    mutationFn: (processData: CreateProcessRequest) => createProcess(processData),
-    onSuccess: (data) => {
-      toast.success("Proceso creado exitosamente");
-      options?.onSuccess?.(data);
-    },
-    onError: (error: any) => {
-      const message =
-        error instanceof Error
-          ? error.message
-          : "Ocurrió un error al crear el proceso";
-      toast.error(message);
-      options?.onError?.(error instanceof Error ? error : new Error(message));
-    },
-  });
-
-  return {
-    createProcessFn: (processData: CreateProcessRequest) =>
-      mutation.mutate(processData),
-    createProcessAsync: (processData: CreateProcessRequest) =>
-      mutation.mutateAsync(processData),
-    ...mutation,
-  };
-};
+// NOTA: Los revisores NO pueden crear procesos.
+// La creación de procesos es exclusiva de los administradores.
 
 /**
  * Hook para obtener los procesos del revisor
@@ -249,10 +217,14 @@ export const useResolveIncidentHook = (options?: {
   });
 
   return {
-    resolveIncidentFn: (incidentId: string, resolveData?: ResolveIncidentRequest) =>
-      mutation.mutate({ incidentId, resolveData }),
-    resolveIncidentAsync: (incidentId: string, resolveData?: ResolveIncidentRequest) =>
-      mutation.mutateAsync({ incidentId, resolveData }),
+    resolveIncidentFn: (
+      incidentId: string,
+      resolveData?: ResolveIncidentRequest
+    ) => mutation.mutate({ incidentId, resolveData }),
+    resolveIncidentAsync: (
+      incidentId: string,
+      resolveData?: ResolveIncidentRequest
+    ) => mutation.mutateAsync({ incidentId, resolveData }),
     ...mutation,
   };
 };
@@ -270,7 +242,8 @@ export const useGenerateReportHook = (options?: {
 }) => {
   const mutation = useMutation({
     mutationKey: ["reports", "generate"],
-    mutationFn: (reportData: GenerateReportRequest) => generateReport(reportData),
+    mutationFn: (reportData: GenerateReportRequest) =>
+      generateReport(reportData),
     onSuccess: (data) => {
       toast.success("Reporte generado exitosamente");
       options?.onSuccess?.(data);

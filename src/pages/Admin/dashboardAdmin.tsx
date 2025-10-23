@@ -1,6 +1,8 @@
 import { useState, useEffect } from "react"
-import { UserPlus, LogOut, Users, ShieldCheck } from "lucide-react"
+import { UserPlus, LogOut, Users, ShieldCheck, FolderPlus } from "lucide-react"
 import RegisterUserModal from "@/components/admin/RegisterUserModal"
+import UsersTable from "@/components/admin/UsersTable"
+import CreateProcessModal from "@/components/admin/CreateProcessModal"
 
 type ActiveSection = "overview" | "users"
 
@@ -14,6 +16,7 @@ interface User {
 export default function ScreenAdmin() {
     const [activeSection, setActiveSection] = useState<ActiveSection>("overview")
     const [isRegisterModalOpen, setIsRegisterModalOpen] = useState(false)
+    const [isCreateProcessModalOpen, setIsCreateProcessModalOpen] = useState(false)
     const [currentUser, setCurrentUser] = useState<User | null>(null)
 
     // Cargar datos del usuario al montar el componente
@@ -50,6 +53,13 @@ export default function ScreenAdmin() {
                             </p>
                         </div>
                         <div className="flex items-center gap-3">
+                            <button
+                                onClick={() => setIsCreateProcessModalOpen(true)}
+                                className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                            >
+                                <FolderPlus size={18} />
+                                <span>Crear Proceso</span>
+                            </button>
                             <button
                                 onClick={() => setIsRegisterModalOpen(true)}
                                 className="flex items-center gap-2 px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors"
@@ -119,7 +129,26 @@ export default function ScreenAdmin() {
                         </div>
 
                         {/* Admin Actions Grid */}
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                            {/* Create Process Card */}
+                            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow">
+                                <div className="flex items-start justify-between mb-4">
+                                    <div className="p-3 bg-blue-100 rounded-lg">
+                                        <FolderPlus size={24} className="text-blue-600" />
+                                    </div>
+                                </div>
+                                <h3 className="text-lg font-semibold text-gray-900 mb-2">Crear Proceso</h3>
+                                <p className="text-gray-600 mb-4 text-sm">
+                                    Crea nuevos procesos para gestionar el flujo de trabajo
+                                </p>
+                                <button
+                                    onClick={() => setIsCreateProcessModalOpen(true)}
+                                    className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
+                                >
+                                    Nuevo Proceso
+                                </button>
+                            </div>
+
                             {/* Register User Card */}
                             <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow">
                                 <div className="flex items-start justify-between mb-4">
@@ -142,8 +171,8 @@ export default function ScreenAdmin() {
                             {/* Manage Users Card */}
                             <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow">
                                 <div className="flex items-start justify-between mb-4">
-                                    <div className="p-3 bg-blue-100 rounded-lg">
-                                        <Users size={24} className="text-blue-600" />
+                                    <div className="p-3 bg-purple-100 rounded-lg">
+                                        <Users size={24} className="text-purple-600" />
                                     </div>
                                 </div>
                                 <h3 className="text-lg font-semibold text-gray-900 mb-2">Gestión de Usuarios</h3>
@@ -152,7 +181,7 @@ export default function ScreenAdmin() {
                                 </p>
                                 <button
                                     onClick={() => setActiveSection("users")}
-                                    className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
+                                    className="w-full px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors font-medium"
                                 >
                                     Ver Usuarios
                                 </button>
@@ -170,7 +199,7 @@ export default function ScreenAdmin() {
                                 <div>
                                     <h4 className="font-semibold text-blue-900 mb-1">Información importante</h4>
                                     <p className="text-sm text-blue-800">
-                                        Los administradores tienen permisos completos para la gestión de usuarios.
+                                        Los administradores tienen permisos completos para la gestión de usuarios y creación de procesos.
                                         La gestión de incidencias y reportes está disponible exclusivamente para el rol de Revisor.
                                     </p>
                                 </div>
@@ -180,22 +209,8 @@ export default function ScreenAdmin() {
                 )}
 
                 {activeSection === "users" && (
-                    <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8 text-center">
-                        <Users size={48} className="mx-auto text-gray-400 mb-4" />
-                        <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                            Gestión de Usuarios
-                        </h3>
-                        <p className="text-gray-600 mb-6">
-                            Esta sección estará disponible próximamente. Por ahora, puedes registrar nuevos usuarios
-                            usando el botón "Registrar Usuario" en la parte superior.
-                        </p>
-                        <button
-                            onClick={() => setIsRegisterModalOpen(true)}
-                            className="inline-flex items-center gap-2 px-6 py-3 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors"
-                        >
-                            <UserPlus size={18} />
-                            Registrar Nuevo Usuario
-                        </button>
+                    <div className="space-y-6">
+                        <UsersTable />
                     </div>
                 )}
             </main>
@@ -207,6 +222,12 @@ export default function ScreenAdmin() {
                 onSuccess={() => {
                     console.log("Usuario registrado exitosamente")
                 }}
+            />
+
+            {/* Create Process Modal */}
+            <CreateProcessModal
+                isOpen={isCreateProcessModalOpen}
+                onClose={() => setIsCreateProcessModalOpen(false)}
             />
         </div>
     )

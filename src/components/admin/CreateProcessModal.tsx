@@ -1,7 +1,7 @@
 import { useState } from "react"
-import { X, FolderPlus, Loader2, Calendar } from "lucide-react"
-import { useCreateProcessHook } from "@/hooks/revisor"
-import type { CreateProcessRequest } from "@/models/incidents"
+import { X, FolderPlus, Loader2, Calendar, UserCheck } from "lucide-react"
+import { useCreateProcessHook, useGetActiveReviewersHook } from "@/hooks/admin"
+import type { CreateProcessRequest } from "@/models/admin"
 
 interface CreateProcessModalProps {
   isOpen: boolean
@@ -13,7 +13,10 @@ export default function CreateProcessModal({ isOpen, onClose }: CreateProcessMod
     name: "",
     description: "",
     dueDate: "",
+    assignedReviewerId: "",
   })
+
+  const { data: reviewers, isLoading: isLoadingReviewers } = useGetActiveReviewersHook()
 
   const { createProcessAsync, isPending } = useCreateProcessHook({
     onSuccess: () => {
@@ -24,13 +27,19 @@ export default function CreateProcessModal({ isOpen, onClose }: CreateProcessMod
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
-    if (!formData.name || !formData.description || !formData.dueDate) {
+    if (!formData.name || !formData.description || !formData.dueDate || !formData.assignedReviewerId) {
       alert("Por favor completa todos los campos")
       return
     }
 
+    // Convertir datetime-local a formato YYYY-MM-DD para el backend
+    const dueDateFormatted = formData.dueDate.split('T')[0]
+
     try {
-      await createProcessAsync(formData)
+      await createProcessAsync({
+        ...formData,
+        dueDate: dueDateFormatted,
+      })
     } catch (error) {
       console.error("Error al crear proceso:", error)
     }
@@ -41,6 +50,7 @@ export default function CreateProcessModal({ isOpen, onClose }: CreateProcessMod
       name: "",
       description: "",
       dueDate: "",
+      assignedReviewerId: "",
     })
     onClose()
   }
@@ -76,7 +86,7 @@ export default function CreateProcessModal({ isOpen, onClose }: CreateProcessMod
             {/* Nombre */}
             <div>
               <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-2">
-                Nombre del Proceso *
+                Nombre del Proceso <span className="text-red-500">*</span>
               </label>
               <input
                 id="name"
@@ -93,7 +103,7 @@ export default function CreateProcessModal({ isOpen, onClose }: CreateProcessMod
             {/* Descripción */}
             <div>
               <label htmlFor="description" className="block text-sm font-medium text-gray-700 mb-2">
-                Descripción *
+                Descripción <span className="text-red-500">*</span>
               </label>
               <textarea
                 id="description"
@@ -107,10 +117,54 @@ export default function CreateProcessModal({ isOpen, onClose }: CreateProcessMod
               />
             </div>
 
+            {/* Asignar Revisor */}
+            <div>
+              <label htmlFor="assignedReviewerId" className="block text-sm font-medium text-gray-700 mb-2">
+                Asignar a Revisor <span className="text-red-500">*</span>
+              </label>
+              <div className="relative">
+                <select
+                  id="assignedReviewerId"
+                  value={formData.assignedReviewerId}
+                  onChange={(e) => setFormData({ ...formData, assignedReviewerId: e.target.value })}
+                  className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-200 focus:border-emerald-500 outline-none appearance-none bg-white"
+                  required
+                  disabled={isPending || isLoadingReviewers}
+                >
+                  <option value="">Selecciona un revisor</option>
+                  {reviewers?.map((reviewer) => (
+                    <option key={reviewer._id} value={reviewer._id}>
+                      {reviewer.name} ({reviewer.email})
+                    </option>
+                  ))}
+                </select>
+                <UserCheck size={18} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 pointer-events-none" />
+                <svg
+                  className="absolute right-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+              </div>
+              {isLoadingReviewers && (
+                <p className="text-xs text-gray-500 mt-1">Cargando revisores disponibles...</p>
+              )}
+              {!isLoadingReviewers && reviewers && reviewers.length === 0 && (
+                <p className="text-xs text-red-500 mt-1">No hay revisores activos disponibles</p>
+              )}
+              {!isLoadingReviewers && reviewers && reviewers.length > 0 && (
+                <p className="text-xs text-gray-500 mt-1">
+                  Selecciona el revisor responsable de este proceso
+                </p>
+              )}
+            </div>
+
             {/* Fecha Límite */}
             <div>
               <label htmlFor="dueDate" className="block text-sm font-medium text-gray-700 mb-2">
-                Fecha Límite *
+                Fecha Límite <span className="text-red-500">*</span>
               </label>
               <div className="relative">
                 <input

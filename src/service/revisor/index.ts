@@ -1,6 +1,5 @@
 import { gstApi } from "@/api";
 import type {
-  CreateProcessRequest,
   CreateIncidentRequest,
   ResolveIncidentRequest,
   ProcessResponse,
@@ -20,49 +19,8 @@ interface CreateIncidentResponse {
 // GESTIÓN DE PROCESOS (REVISOR)
 // ========================================
 
-/**
- * Crear un nuevo proceso (revisor)
- * POST /reviewer (según Postman)
- */
-export const createProcess = async (
-  processData: CreateProcessRequest
-): Promise<ProcessResponse> => {
-  try {
-    console.log("📝 Creando proceso:", processData);
-    console.log(
-      "🌐 URL que se formará:",
-      `${gstApi.defaults.baseURL}/reviewer`
-    );
-
-    const { data } = await gstApi.post<any>("/reviewer", processData);
-
-    console.log("✅ Proceso creado exitosamente:", data);
-
-    // Transformar respuesta del backend
-    const transformedData: ProcessResponse = {
-      id: data._id || data.id,
-      name: data.name,
-      description: data.description,
-      status: data.status || "pendiente",
-      dueDate: data.dueDate ? new Date(data.dueDate) : new Date(),
-      createdAt: data.createdAt ? new Date(data.createdAt) : new Date(),
-      createdBy: {
-        name: data.createdBy?.name || data.createdBy?.username || "Usuario",
-        email: data.createdBy?.email || "",
-      },
-    };
-
-    return transformedData;
-  } catch (err: any) {
-    console.error("❌ Error al crear proceso:", err?.response?.data || err);
-    const message =
-      err?.response?.data?.error ||
-      err?.response?.data?.message ||
-      err?.message ||
-      "Error al crear el proceso";
-    throw new Error(message);
-  }
-};
+// NOTA: Los revisores NO pueden crear procesos.
+// La creación de procesos es exclusiva de los administradores.
 
 /**
  * Obtener procesos asignados al revisor
