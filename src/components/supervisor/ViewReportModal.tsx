@@ -1,6 +1,7 @@
 import { useState } from "react"
 import { X, FileText, Download, Loader2, Calendar } from "lucide-react"
 import { useGetReportHook } from "@/hooks/supervisor"
+import { downloadReportPDF } from "@/service/supervisor"
 
 interface ViewReportModalProps {
   isOpen: boolean
@@ -20,23 +21,33 @@ export default function ViewReportModal({ isOpen, onClose, reportId }: ViewRepor
   const [isDownloading, setIsDownloading] = useState(false)
 
   const handleDownload = async () => {
-    if (!report?.fileUrl) return
+    if (!reportId) return
 
     setIsDownloading(true)
     try {
-      const response = await fetch(report.fileUrl)
-      const blob = await response.blob()
+      console.log("🔽 Iniciando descarga del reporte:", reportId)
+
+      // ✅ Usar la función que incluye autenticación
+      const blob = await downloadReportPDF(reportId)
+
+      // Crear URL temporal del blob
       const url = window.URL.createObjectURL(blob)
+
+      // Crear elemento <a> temporal para forzar la descarga
       const link = document.createElement("a")
       link.href = url
-      link.download = `reporte-${report.id}.pdf`
+      link.download = `reporte-${reportId}.pdf`
       document.body.appendChild(link)
       link.click()
+
+      // Limpiar
       document.body.removeChild(link)
       window.URL.revokeObjectURL(url)
+
+      console.log("✅ Reporte descargado exitosamente")
     } catch (error) {
-      console.error("Error al descargar reporte:", error)
-      alert("Error al descargar el reporte")
+      console.error("❌ Error al descargar reporte:", error)
+      alert(error instanceof Error ? error.message : "Error al descargar el reporte")
     } finally {
       setIsDownloading(false)
     }
@@ -154,7 +165,7 @@ export default function ViewReportModal({ isOpen, onClose, reportId }: ViewRepor
           </button>
           <button
             onClick={handleDownload}
-            disabled={!report?.fileUrl || isDownloading}
+            disabled={!reportId || isDownloading}
             className="flex-1 px-4 py-2 bg-purple-500 text-white rounded-lg hover:bg-purple-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
           >
             {isDownloading ? (

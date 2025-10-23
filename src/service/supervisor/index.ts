@@ -29,7 +29,10 @@ export const getAllProcesses = async (): Promise<ProcessResponse[]> => {
       dueDate: process.dueDate ? new Date(process.dueDate) : new Date(),
       createdAt: process.createdAt ? new Date(process.createdAt) : new Date(),
       createdBy: {
-        name: process.createdBy?.name || process.createdBy?.username || "Usuario desconocido",
+        name:
+          process.createdBy?.name ||
+          process.createdBy?.username ||
+          "Usuario desconocido",
         email: process.createdBy?.email || "",
       },
     }));
@@ -98,10 +101,7 @@ export const assignIncident = async (
   assignData: AssignIncidentRequest
 ): Promise<{ success: boolean; message: string }> => {
   try {
-    await gstApi.patch(
-      `/incidents/${incidentId}/assign`,
-      assignData
-    );
+    await gstApi.patch(`/incidents/${incidentId}/assign`, assignData);
 
     return { success: true, message: "Incidencia asignada correctamente" };
   } catch (err: any) {
@@ -153,6 +153,31 @@ export const getReport = async (reportId: string): Promise<ReportResponse> => {
       err?.response?.data?.message ||
       err?.message ||
       "Error al obtener el reporte";
+    throw new Error(message);
+  }
+};
+
+/**
+ * Descargar reporte PDF
+ * GET /api/v1/reports/:reportId (con responseType: 'blob')
+ */
+export const downloadReportPDF = async (reportId: string): Promise<Blob> => {
+  try {
+    console.log("📥 Descargando reporte PDF:", reportId);
+
+    const { data } = await gstApi.get(`/reports/${reportId}`, {
+      responseType: "blob", // 🔑 IMPORTANTE: Esto indica que esperamos un archivo binario
+    });
+
+    console.log("✅ PDF descargado exitosamente:", data);
+    return data;
+  } catch (err: any) {
+    console.error("❌ Error al descargar reporte PDF:", err);
+    const message =
+      err?.response?.data?.error ||
+      err?.response?.data?.message ||
+      err?.message ||
+      "Error al descargar el reporte PDF";
     throw new Error(message);
   }
 };
