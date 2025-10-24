@@ -258,7 +258,7 @@ export const resolveIncident = async (
 // ========================================
 
 /**
- * Generar reporte PDF de un proceso
+ * Generar reporte PDF de un proceso y descargarlo automáticamente
  * POST /api/v1/reports
  */
 export const generateReport = async (
@@ -267,10 +267,51 @@ export const generateReport = async (
   try {
     console.log("📊 Enviando datos para generar reporte:", reportData);
 
-    const { data } = await gstApi.post<ReportResponse>("/reports", reportData);
+    // 🔑 El servidor devuelve directamente el PDF, no un JSON
+    const response = await gstApi.post("/reports", reportData, {
+      responseType: "blob", // Importante: esperamos un archivo binario (PDF)
+    });
 
-    console.log("✅ Reporte generado exitosamente:", data);
-    return data;
+    console.log("✅ Reporte PDF generado exitosamente");
+
+    // 🔽 Descargar automáticamente el PDF
+    try {
+      // Crear URL temporal del blob
+      const url = window.URL.createObjectURL(response.data);
+
+      // Obtener el nombre del archivo desde los headers (si existe)
+      const contentDisposition = response.headers["content-disposition"];
+      let fileName = "reporte.pdf";
+
+      if (contentDisposition) {
+        const fileNameMatch = contentDisposition.match(/filename="?(.+?)"?$/);
+        if (fileNameMatch && fileNameMatch[1]) {
+          fileName = fileNameMatch[1];
+        }
+      }
+
+      // Crear link <a> temporal y hacer clic programáticamente
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = fileName;
+      document.body.appendChild(link);
+      link.click();
+
+      // Limpiar recursos
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+
+      console.log("✅ PDF descargado automáticamente:", fileName);
+    } catch (downloadErr) {
+      console.error("⚠️ Error al descargar PDF automáticamente:", downloadErr);
+    }
+
+    // Retornar un objeto simulado ya que no hay respuesta JSON
+    return {
+      id: "generated",
+      generatedAt: new Date().toISOString(),
+      fileUrl: "",
+    } as ReportResponse;
   } catch (err: any) {
     console.error("❌ Error al generar reporte:", err?.response?.data || err);
     const message =
