@@ -35,6 +35,11 @@ export const getAllProcesses = async (): Promise<ProcessResponse[]> => {
           "Usuario desconocido",
         email: process.createdBy?.email || "",
       },
+      assignedReviewer: process.assignedReviewer ? {
+        _id: process.assignedReviewer._id,
+        name: process.assignedReviewer.name,
+        email: process.assignedReviewer.email,
+      } : undefined,
     }));
 
     console.log("✅ Datos transformados de procesos:", transformedData);

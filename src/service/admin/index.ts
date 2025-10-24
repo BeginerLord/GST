@@ -142,6 +142,52 @@ export const toggleUserStatus = async (
 // ========================================
 
 /**
+ * Obtener todos los procesos (SOLO administradores y supervisores)
+ * GET /api/v1/processes/supervisor
+ * Middleware: [verifyToken, requireAdminOrSupervisor]
+ */
+export const getAllProcesses = async (): Promise<ProcessResponse[]> => {
+  try {
+    const { data } = await gstApi.get<any[]>("/processes/supervisor");
+
+    console.log("📦 [ADMIN] Datos crudos de procesos:", data);
+
+    // Transformar datos del backend al formato esperado
+    const transformedData: ProcessResponse[] = data.map((process: any) => ({
+      id: process._id || process.id,
+      name: process.name || process.title || "Sin nombre",
+      description: process.description || "",
+      status: process.status || "pendiente",
+      dueDate: process.dueDate ? new Date(process.dueDate) : new Date(),
+      createdAt: process.createdAt ? new Date(process.createdAt) : new Date(),
+      createdBy: {
+        name:
+          process.createdBy?.name ||
+          process.createdBy?.username ||
+          "Usuario desconocido",
+        email: process.createdBy?.email || "",
+      },
+      assignedReviewer: process.assignedReviewer ? {
+        _id: process.assignedReviewer._id,
+        name: process.assignedReviewer.name,
+        email: process.assignedReviewer.email,
+      } : undefined,
+    }));
+
+    console.log("✅ [ADMIN] Datos transformados de procesos:", transformedData);
+
+    return transformedData;
+  } catch (err: any) {
+    console.error("❌ [ADMIN] Error en getAllProcesses:", err);
+    const message =
+      err?.response?.data?.message ||
+      err?.message ||
+      "Error al obtener los procesos";
+    throw new Error(message);
+  }
+};
+
+/**
  * Crear un nuevo proceso (SOLO administradores)
  * POST /api/v1/reviewer
  * Middleware: [verifyToken, requireAdmin]

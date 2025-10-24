@@ -57,7 +57,7 @@ export default function DashboardSupervisor() {
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
       <header className="bg-white shadow-sm border-b border-gray-200">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+        <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex items-center justify-between">
             <div>
               <h1 className="text-2xl font-bold text-gray-900">Panel de Supervisor</h1>
@@ -78,7 +78,7 @@ export default function DashboardSupervisor() {
 
       {/* Navigation Tabs */}
       <div className="bg-white border-b border-gray-200">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8">
           <nav className="flex gap-8">
             <button
               onClick={() => setActiveSection("overview")}
@@ -129,7 +129,7 @@ export default function DashboardSupervisor() {
       </div>
 
       {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <main className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {activeSection === "overview" && (
           <div className="space-y-6">
             {/* Welcome Card */}

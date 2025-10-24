@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react"
 import { Search, ChevronDown, ChevronUp, FolderOpen } from "lucide-react"
-import type { ProcessResponse } from "@/models/incidents"
-import { useGetAllProcessesHook } from "@/hooks/supervisor"
+import type { ProcessResponse } from "@/models/admin"
+import { useGetAllProcessesHook } from "@/hooks/admin"
 
 export default function ProcessTable() {
   const {
@@ -93,7 +93,7 @@ export default function ProcessTable() {
               placeholder="Buscar por ID o nombre de proceso..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-200 focus:border-blue-500 transition-all duration-200 outline-none"
+              className="w-full pl-10 pr-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-emerald-200 focus:border-emerald-500 transition-all duration-200 outline-none"
             />
             <Search size={18} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
           </div>
@@ -178,7 +178,7 @@ export default function ProcessTable() {
               <tr>
                 <td colSpan={8} className="px-6 py-8 text-center text-gray-500">
                   <div className="flex items-center justify-center">
-                    <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-500 mr-2"></div>
+                    <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-emerald-500 mr-2"></div>
                     Cargando procesos...
                   </div>
                 </td>
@@ -188,7 +188,7 @@ export default function ProcessTable() {
                 <tr key={process.id} className="hover:bg-gray-50 transition-colors">
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="flex items-center">
-                      <FolderOpen size={16} className="text-blue-500 mr-2" />
+                      <FolderOpen size={16} className="text-emerald-500 mr-2" />
                       <div className="font-medium text-gray-900">{process.id}</div>
                     </div>
                   </td>

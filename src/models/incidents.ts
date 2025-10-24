@@ -41,6 +41,11 @@ export interface ProcessResponse {
     name: string;
     email: string;
   };
+  assignedReviewer?: {
+    _id: string;
+    name: string;
+    email: string;
+  };
 }
 
 // Modelo para generar reportes

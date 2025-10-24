@@ -1,10 +1,11 @@
 import { useState, useEffect } from "react"
-import { UserPlus, LogOut, Users, ShieldCheck, FolderPlus } from "lucide-react"
+import { UserPlus, LogOut, Users, ShieldCheck, FolderPlus, FolderOpen } from "lucide-react"
 import RegisterUserModal from "@/components/admin/RegisterUserModal"
 import UsersTable from "@/components/admin/UsersTable"
 import CreateProcessModal from "@/components/admin/CreateProcessModal"
+import ProcessTable from "@/components/admin/ProcessTable"
 
-type ActiveSection = "overview" | "users"
+type ActiveSection = "overview" | "users" | "processes"
 
 interface User {
   _id: string;
@@ -44,7 +45,7 @@ export default function ScreenAdmin() {
         <div className="min-h-screen bg-gray-50">
             {/* Header */}
             <header className="bg-white shadow-sm border-b border-gray-200">
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+                <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-4">
                     <div className="flex items-center justify-between">
                         <div>
                             <h1 className="text-2xl font-bold text-gray-900">Panel de Administración</h1>
@@ -81,7 +82,7 @@ export default function ScreenAdmin() {
 
             {/* Navigation Tabs */}
             <div className="bg-white border-b border-gray-200">
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8">
                     <nav className="flex gap-8">
                         <button
                             onClick={() => setActiveSection("overview")}
@@ -105,12 +106,23 @@ export default function ScreenAdmin() {
                             <Users size={18} />
                             Gestión de Usuarios
                         </button>
+                        <button
+                            onClick={() => setActiveSection("processes")}
+                            className={`flex items-center gap-2 px-1 py-4 border-b-2 font-medium text-sm transition-colors ${
+                                activeSection === "processes"
+                                    ? "border-emerald-600 text-emerald-600"
+                                    : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                            }`}
+                        >
+                            <FolderOpen size={18} />
+                            Procesos
+                        </button>
                     </nav>
                 </div>
             </div>
 
             {/* Main Content */}
-            <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+            <main className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-8">
                 {activeSection === "overview" && (
                     <div className="space-y-6">
                         {/* Welcome Card */}
@@ -211,6 +223,12 @@ export default function ScreenAdmin() {
                 {activeSection === "users" && (
                     <div className="space-y-6">
                         <UsersTable />
+                    </div>
+                )}
+
+                {activeSection === "processes" && (
+                    <div className="space-y-6">
+                        <ProcessTable />
                     </div>
                 )}
             </main>

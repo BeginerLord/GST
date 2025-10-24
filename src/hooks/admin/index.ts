@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { registerUser, getUsers, updateUser, toggleUserStatus, createProcess, getActiveReviewers } from "@/service/admin";
+import { useEffect } from "react";
+import { registerUser, getUsers, updateUser, toggleUserStatus, createProcess, getActiveReviewers, getAllProcesses } from "@/service/admin";
 import type { RegisterUserRequest, UpdateUserRequest, CreateProcessRequest, ProcessResponse } from "@/models/admin";
 
 // ========================================
@@ -200,6 +201,48 @@ export const useCreateProcessHook = (options?: {
 };
 
 export type UseCreateProcessHookReturn = ReturnType<typeof useCreateProcessHook>;
+
+/**
+ * Hook para obtener todos los procesos (administradores y supervisores)
+ * Ejemplo de uso:
+ * const { data: processes, isLoading, error, refetch } = useGetAllProcessesHook();
+ */
+export const useGetAllProcessesHook = (options?: {
+  enabled?: boolean;
+  onSuccess?: (data: ProcessResponse[]) => void;
+  onError?: (error: Error) => void;
+}) => {
+  const query = useQuery({
+    queryKey: ["admin", "processes", "all"],
+    queryFn: getAllProcesses,
+    enabled: options?.enabled ?? true,
+  });
+
+  useEffect(() => {
+    if (query.data && query.isSuccess && options?.onSuccess) {
+      options.onSuccess(query.data);
+    }
+  }, [query.data, query.isSuccess, options?.onSuccess]);
+
+  useEffect(() => {
+    if (query.error && query.isError) {
+      const message =
+        query.error instanceof Error
+          ? query.error.message
+          : "Error al obtener los procesos";
+      toast.error(message);
+      if (options?.onError) {
+        options.onError(
+          query.error instanceof Error ? query.error : new Error(message)
+        );
+      }
+    }
+  }, [query.error, query.isError, options?.onError]);
+
+  return query;
+};
+
+export type UseGetAllProcessesHookReturn = ReturnType<typeof useGetAllProcessesHook>;
 
 // ========================================
 // NOTA IMPORTANTE
